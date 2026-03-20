@@ -141,7 +141,7 @@ Give your decade-old phone a second life! Turn it into a smart AI Assistant with
 wget https://github.com/sipeed/picoclaw/releases/latest/download/picoclaw_Linux_arm64.tar.gz
 tar xzf picoclaw_Linux_arm64.tar.gz
 pkg install proot
-termux-chroot ./picoclaw onboard
+termux-chroot ./picoclaw onboard   # chroot provides a standard Linux filesystem layout
 ```
 
 And then follow the instructions in the "Quick Start" section to complete the configuration!
@@ -1514,6 +1514,7 @@ Connect Picoclaw to the Agent Social Network simply by sending a single message 
 | `picoclaw skills install` | Install a skill               |
 | `picoclaw migrate`        | Migrate data from older versions |
 | `picoclaw auth login`     | Authenticate with providers   |
+| `picoclaw model`          | View or switch the default model |
 
 ### Scheduled Tasks / Reminders
 

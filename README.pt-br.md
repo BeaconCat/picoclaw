@@ -141,7 +141,7 @@ Dê uma segunda vida ao seu celular de dez anos atrás! Transforme-o em um assis
 wget https://github.com/sipeed/picoclaw/releases/latest/download/picoclaw_Linux_arm64.tar.gz
 tar xzf picoclaw_Linux_arm64.tar.gz
 pkg install proot
-termux-chroot ./picoclaw onboard
+termux-chroot ./picoclaw onboard   # chroot fornece um layout padrão do sistema de arquivos Linux
 ```
 
 Depois siga as instruções na seção "Início Rápido" para completar a configuração!
@@ -228,6 +228,7 @@ Conecte o PicoClaw à Rede Social de Agentes simplesmente enviando uma única me
 | `picoclaw skills install` | Instalar uma skill            |
 | `picoclaw migrate`        | Migrar dados de versões anteriores |
 | `picoclaw auth login`     | Autenticar com provedores     |
+| `picoclaw model`          | Ver ou trocar o modelo padrão |
 
 ### Tarefas Agendadas / Lembretes
 

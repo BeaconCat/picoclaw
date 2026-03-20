@@ -141,7 +141,7 @@ Hãy cho chiếc điện thoại cũ một cuộc sống mới! Biến nó thàn
 wget https://github.com/sipeed/picoclaw/releases/latest/download/picoclaw_Linux_arm64.tar.gz
 tar xzf picoclaw_Linux_arm64.tar.gz
 pkg install proot
-termux-chroot ./picoclaw onboard
+termux-chroot ./picoclaw onboard   # chroot cung cấp bố cục hệ thống tệp Linux tiêu chuẩn
 ```
 
 Sau đó làm theo hướng dẫn trong phần "Bắt đầu nhanh" để hoàn tất cấu hình!
@@ -228,6 +228,7 @@ Kết nối PicoClaw với Mạng xã hội Agent chỉ bằng cách gửi một
 | `picoclaw skills install`  | Cài đặt một skill              |
 | `picoclaw migrate`         | Di chuyển dữ liệu từ phiên bản cũ |
 | `picoclaw auth login`      | Xác thực với nhà cung cấp     |
+| `picoclaw model`           | Xem hoặc chuyển đổi model mặc định |
 
 ### Tác vụ định kỳ / Nhắc nhở
 

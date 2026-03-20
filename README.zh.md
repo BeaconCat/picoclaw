@@ -140,7 +140,7 @@ PicoClaw 可以将你 10 年前的老旧手机废物利用，变身成为你的 
 wget https://github.com/sipeed/picoclaw/releases/latest/download/picoclaw_Linux_arm64.tar.gz
 tar xzf picoclaw_Linux_arm64.tar.gz
 pkg install proot
-termux-chroot ./picoclaw onboard
+termux-chroot ./picoclaw onboard   # chroot 提供标准 Linux 文件系统布局
 ```
 
 然后跟随下面的"快速开始"章节继续配置 PicoClaw 即可使用！
@@ -227,6 +227,7 @@ make install
 | `picoclaw skills install` | 安装技能                |
 | `picoclaw migrate`        | 从旧版本迁移数据         |
 | `picoclaw auth login`     | 认证提供商               |
+| `picoclaw model`          | 查看或切换默认模型 |
 
 ### 定时任务 / 提醒
 
