@@ -105,6 +105,8 @@ _*Versões recentes podem usar 10–20MB devido a merges rápidos de funcionalid
 
 <img src="assets/compare.jpg" alt="PicoClaw" width="512">
 
+> 📋 **[Lista de Compatibilidade de Hardware](docs/hardware-compatibility.md)** — Veja todas as placas testadas, de RISC-V de $5 a Raspberry Pi e telefones Android. Sua placa não está listada? Envie um PR!
+
 ## 🦾 Demonstração
 
 ### 🛠️ Fluxos de Trabalho Padrão do Assistente
@@ -200,6 +202,7 @@ Para guias detalhados, consulte a documentação abaixo. Este README cobre apena
 | 🔄 [Spawn & Tarefas Assíncronas](docs/pt-br/spawn-tasks.md) | Tarefas rápidas, tarefas longas com spawn, orquestração assíncrona de sub-agentes |
 | 🐛 [Solução de Problemas](docs/pt-br/troubleshooting.md) | Problemas comuns e soluções |
 | 🔧 [Configuração de Ferramentas](docs/pt-br/tools_configuration.md) | Habilitar/desabilitar por ferramenta, políticas de execução |
+| 📋 [Compatibilidade de Hardware](docs/hardware-compatibility.md) | Placas testadas, requisitos mínimos, como adicionar sua placa |
 
 ## <img src="assets/clawdchat-icon.png" width="24" height="24" alt="ClawdChat"> Junte-se à Rede Social de Agentes
 

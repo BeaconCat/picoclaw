@@ -105,6 +105,8 @@ _*Các phiên bản gần đây có thể sử dụng 10–20MB do merge tính n
 
 <img src="assets/compare.jpg" alt="PicoClaw" width="512">
 
+> 📋 **[Danh Sách Tương Thích Phần Cứng](docs/hardware-compatibility.md)** — Xem tất cả các board đã được kiểm tra, từ RISC-V $5 đến Raspberry Pi và điện thoại Android. Board của bạn chưa có? Gửi PR!
+
 ## 🦾 Demo
 
 ### 🛠️ Quy trình trợ lý tiêu chuẩn
@@ -200,6 +202,7 @@ make install
 | 🔄 [Spawn & Tác vụ bất đồng bộ](docs/vi/spawn-tasks.md) | Tác vụ nhanh, tác vụ dài với spawn, điều phối sub-agent bất đồng bộ |
 | 🐛 [Xử lý sự cố](docs/vi/troubleshooting.md) | Các vấn đề thường gặp và giải pháp |
 | 🔧 [Cấu hình Công cụ](docs/vi/tools_configuration.md) | Bật/tắt từng công cụ, chính sách thực thi |
+| 📋 [Tương Thích Phần Cứng](docs/hardware-compatibility.md) | Các board đã kiểm tra, yêu cầu tối thiểu, cách thêm board |
 
 ## <img src="assets/clawdchat-icon.png" width="24" height="24" alt="ClawdChat"> Tham gia Mạng xã hội Agent
 

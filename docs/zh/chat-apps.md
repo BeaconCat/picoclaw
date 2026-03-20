@@ -281,8 +281,8 @@ picoclaw gateway
       "enabled": true,
       "server": "irc.libera.chat:6697",
       "nick": "picoclaw-bot",
-      "use_tls": true,
-      "channels_to_join": ["#your-channel"],
+      "tls": true,
+      "channels": ["#your-channel"],
       "allow_from": []
     }
   }
@@ -496,7 +496,7 @@ picoclaw gateway
 **1. 创建 AI Bot**
 
 * 企业微信管理后台 → 应用管理 → AI Bot
-* 在 AI Bot 设置中配置回调 URL：`http://your-server:18791/webhook/wecom-aibot`
+* 在 AI Bot 设置中配置回调 URL：`http://your-server:18790/webhook/wecom-aibot`
 * 复制 **Token** 并点击"随机生成" **EncodingAESKey**
 
 **2. 配置**

@@ -1,31 +1,33 @@
-# Antigravity Authentication & Integration Guide
+> 返回 [README](../../README.zh.md)
 
-## Overview
+# Antigravity 认证与集成指南
 
-**Antigravity** (Google Cloud Code Assist) is a Google-backed AI model provider that offers access to models like Claude Opus 4.6 and Gemini through Google's Cloud infrastructure. This document provides a complete guide on how authentication works, how to fetch models, and how to implement a new provider in PicoClaw.
+## 概述
 
----
-
-## Table of Contents
-
-1. [Authentication Flow](#authentication-flow)
-2. [OAuth Implementation Details](#oauth-implementation-details)
-3. [Token Management](#token-management)
-4. [Models List Fetching](#models-list-fetching)
-5. [Usage Tracking](#usage-tracking)
-6. [Provider Plugin Structure](#provider-plugin-structure)
-7. [Integration Requirements](#integration-requirements)
-8. [API Endpoints](#api-endpoints)
-9. [Configuration](#configuration)
-10. [Creating a New Provider in PicoClaw](#creating-a-new-provider-in-picoclaw)
+**Antigravity**（Google Cloud Code Assist）是由 Google 支持的 AI 模型提供商，通过 Google 的云基础设施提供对 Claude Opus 4.6 和 Gemini 等模型的访问。本文档提供了关于认证工作原理、如何获取模型以及如何在 PicoClaw 中实现新提供商的完整指南。
 
 ---
 
-## Authentication Flow
+## 目录
 
-### 1. OAuth 2.0 with PKCE
+1. [认证流程](#认证流程)
+2. [OAuth 实现细节](#oauth-实现细节)
+3. [令牌管理](#令牌管理)
+4. [模型列表获取](#模型列表获取)
+5. [用量追踪](#用量追踪)
+6. [提供商插件结构](#提供商插件结构)
+7. [集成要求](#集成要求)
+8. [API 端点](#api-端点)
+9. [配置](#配置)
+10. [在 PicoClaw 中创建新提供商](#在-picoclaw-中创建新提供商)
 
-Antigravity uses **OAuth 2.0 with PKCE (Proof Key for Code Exchange)** for secure authentication:
+---
+
+## 认证流程
+
+### 1. 带 PKCE 的 OAuth 2.0
+
+Antigravity 使用 **OAuth 2.0 with PKCE（Proof Key for Code Exchange）** 进行安全认证：
 
 ```
 ┌─────────────┐                                    ┌─────────────────┐
@@ -40,9 +42,9 @@ Antigravity uses **OAuth 2.0 with PKCE (Proof Key for Code Exchange)** for secur
 └─────────────┘                                    └─────────────────┘
 ```
 
-### 2. Detailed Steps
+### 2. 详细步骤
 
-#### Step 1: Generate PKCE Parameters
+#### 步骤 1：生成 PKCE 参数
 ```typescript
 function generatePkce(): { verifier: string; challenge: string } {
   const verifier = randomBytes(32).toString("hex");
@@ -51,7 +53,7 @@ function generatePkce(): { verifier: string; challenge: string } {
 }
 ```
 
-#### Step 2: Build Authorization URL
+#### 步骤 2：构建授权 URL
 ```typescript
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const REDIRECT_URI = "http://localhost:51121/oauth-callback";
@@ -71,7 +73,7 @@ function buildAuthUrl(params: { challenge: string; state: string }): string {
 }
 ```
 
-**Required Scopes:**
+**所需权限范围：**
 ```typescript
 const SCOPES = [
   "https://www.googleapis.com/auth/cloud-platform",
@@ -82,20 +84,20 @@ const SCOPES = [
 ];
 ```
 
-#### Step 3: Handle OAuth Callback
+#### 步骤 3：处理 OAuth 回调
 
-**Automatic Mode (Local Development):**
-- Start a local HTTP server on port 51121
-- Wait for the redirect from Google
-- Extract the authorization code from the query parameters
+**自动模式（本地开发）：**
+- 在端口 51121 上启动本地 HTTP 服务器
+- 等待来自 Google 的重定向
+- 从查询参数中提取授权码
 
-**Manual Mode (Remote/Headless):**
-- Display the authorization URL to the user
-- User completes authentication in their browser
-- User pastes the full redirect URL back into the terminal
-- Parse the code from the pasted URL
+**手动模式（远程/无头环境）：**
+- 向用户显示授权 URL
+- 用户在浏览器中完成认证
+- 用户将完整的重定向 URL 粘贴回终端
+- 从粘贴的 URL 中解析授权码
 
-#### Step 4: Exchange Code for Tokens
+#### 步骤 4：用授权码交换令牌
 ```typescript
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
@@ -126,9 +128,9 @@ async function exchangeCode(params: {
 }
 ```
 
-#### Step 5: Fetch Additional User Data
+#### 步骤 5：获取额外的用户数据
 
-**User Email:**
+**用户邮箱：**
 ```typescript
 async function fetchUserEmail(accessToken: string): Promise<string | undefined> {
   const response = await fetch(
@@ -140,7 +142,7 @@ async function fetchUserEmail(accessToken: string): Promise<string | undefined> 
 }
 ```
 
-**Project ID (Required for API calls):**
+**项目 ID（API 调用必需）：**
 ```typescript
 async function fetchProjectId(accessToken: string): Promise<string> {
   const headers = {
@@ -171,17 +173,17 @@ async function fetchProjectId(accessToken: string): Promise<string> {
   );
 
   const data = await response.json();
-  return data.cloudaicompanionProject || "rising-fact-p41fc"; // Default fallback
+  return data.cloudaicompanionProject || "rising-fact-p41fc"; // 默认回退值
 }
 ```
 
 ---
 
-## OAuth Implementation Details
+## OAuth 实现细节
 
-### Client Credentials
+### 客户端凭据
 
-**Important:** These are base64-encoded in the source code for sync with pi-ai:
+**重要：** 这些凭据在源代码中以 base64 编码存储，用于与 pi-ai 同步：
 
 ```typescript
 const decode = (s: string) => Buffer.from(s, "base64").toString();
@@ -192,17 +194,17 @@ const CLIENT_ID = decode(
 const CLIENT_SECRET = decode("R09DU1BYLUs1OEZXUjQ4NkxkTEoxbUxCOHNYQzR6NnFEQWY=");
 ```
 
-### OAuth Flow Modes
+### OAuth 流程模式
 
-1. **Automatic Flow** (Local machines with browser):
-   - Opens browser automatically
-   - Local callback server captures redirect
-   - No user interaction required after initial auth
+1. **自动流程**（有浏览器的本地机器）：
+   - 自动打开浏览器
+   - 本地回调服务器捕获重定向
+   - 初始认证后无需用户交互
 
-2. **Manual Flow** (Remote/headless/WSL2):
-   - URL displayed for manual copy-paste
-   - User completes auth in external browser
-   - User pastes full redirect URL back
+2. **手动流程**（远程/无头/WSL2 环境）：
+   - 显示 URL 供手动复制粘贴
+   - 用户在外部浏览器中完成认证
+   - 用户将完整的重定向 URL 粘贴回来
 
 ```typescript
 function shouldUseManualOAuthFlow(isRemote: boolean): boolean {
@@ -212,31 +214,31 @@ function shouldUseManualOAuthFlow(isRemote: boolean): boolean {
 
 ---
 
-## Token Management
+## 令牌管理
 
-### Auth Profile Structure
+### 认证配置文件结构
 
 ```typescript
 type OAuthCredential = {
   type: "oauth";
   provider: "google-antigravity";
-  access: string;           // Access token
-  refresh: string;          // Refresh token
-  expires: number;          // Expiration timestamp (ms since epoch)
-  email?: string;           // User email
-  projectId?: string;       // Google Cloud project ID
+  access: string;           // 访问令牌
+  refresh: string;          // 刷新令牌
+  expires: number;          // 过期时间戳（毫秒，自 epoch 起）
+  email?: string;           // 用户邮箱
+  projectId?: string;       // Google Cloud 项目 ID
 };
 ```
 
-### Token Refresh
+### 令牌刷新
 
-The credential includes a refresh token that can be used to obtain new access tokens when the current one expires. The expiration is set with a 5-minute buffer to prevent race conditions.
+凭据包含一个刷新令牌，可在当前访问令牌过期时用于获取新的访问令牌。过期时间设置了 5 分钟的缓冲区以防止竞态条件。
 
 ---
 
-## Models List Fetching
+## 模型列表获取
 
-### Fetch Available Models
+### 获取可用模型
 
 ```typescript
 const BASE_URL = "https://cloudcode-pa.googleapis.com";
@@ -263,7 +265,7 @@ async function fetchAvailableModels(
 
   const data = await response.json();
   
-  // Returns models with quota information
+  // 返回带有配额信息的模型
   return Object.entries(data.models).map(([modelId, modelInfo]) => ({
     id: modelId,
     displayName: modelInfo.displayName,
@@ -276,7 +278,7 @@ async function fetchAvailableModels(
 }
 ```
 
-### Response Format
+### 响应格式
 
 ```typescript
 type FetchAvailableModelsResponse = {
@@ -284,7 +286,7 @@ type FetchAvailableModelsResponse = {
     displayName?: string;
     quotaInfo?: {
       remainingFraction?: number | string;
-      resetTime?: string;      // ISO 8601 timestamp
+      resetTime?: string;      // ISO 8601 时间戳
       isExhausted?: boolean;
     };
   }>;
@@ -293,16 +295,16 @@ type FetchAvailableModelsResponse = {
 
 ---
 
-## Usage Tracking
+## 用量追踪
 
-### Fetch Usage Data
+### 获取用量数据
 
 ```typescript
 export async function fetchAntigravityUsage(
   token: string,
   timeoutMs: number
 ): Promise<ProviderUsageSnapshot> {
-  // 1. Fetch credits and plan info
+  // 1. 获取额度和计划信息
   const loadCodeAssistRes = await fetch(
     `${BASE_URL}/v1internal:loadCodeAssist`,
     {
@@ -321,10 +323,10 @@ export async function fetchAntigravityUsage(
     }
   );
 
-  // Extract credits info
+  // 提取额度信息
   const { availablePromptCredits, planInfo, currentTier } = data;
   
-  // 2. Fetch model quotas
+  // 2. 获取模型配额
   const modelsRes = await fetch(
     `${BASE_URL}/v1internal:fetchAvailableModels`,
     {
@@ -334,20 +336,20 @@ export async function fetchAntigravityUsage(
     }
   );
 
-  // Build usage windows
+  // 构建用量窗口
   return {
     provider: "google-antigravity",
     displayName: "Google Antigravity",
     windows: [
       { label: "Credits", usedPercent: calculateUsedPercent(available, monthly) },
-      // Individual model quotas...
+      // 各模型配额...
     ],
     plan: currentTier?.name || planType,
   };
 }
 ```
 
-### Usage Response Structure
+### 用量响应结构
 
 ```typescript
 type ProviderUsageSnapshot = {
@@ -359,17 +361,17 @@ type ProviderUsageSnapshot = {
 };
 
 type UsageWindow = {
-  label: string;           // "Credits" or model ID
+  label: string;           // "Credits" 或模型 ID
   usedPercent: number;     // 0-100
-  resetAt?: number;        // Timestamp when quota resets
+  resetAt?: number;        // 配额重置的时间戳
 };
 ```
 
 ---
 
-## Provider Plugin Structure
+## 提供商插件结构
 
-### Plugin Definition
+### 插件定义
 
 ```typescript
 const antigravityPlugin = {
@@ -392,7 +394,7 @@ const antigravityPlugin = {
           hint: "PKCE + localhost callback",
           kind: "oauth",
           run: async (ctx: ProviderAuthContext) => {
-            // OAuth implementation here
+            // OAuth 实现在此处
           },
         },
       ],
@@ -408,10 +410,10 @@ type ProviderAuthContext = {
   config: PicoClawConfig;
   agentDir?: string;
   workspaceDir?: string;
-  prompter: WizardPrompter;      // UI prompts/notifications
-  runtime: RuntimeEnv;           // Logging, etc.
-  isRemote: boolean;             // Whether running remotely
-  openUrl: (url: string) => Promise<void>;  // Browser opener
+  prompter: WizardPrompter;      // UI 提示/通知
+  runtime: RuntimeEnv;           // 日志等
+  isRemote: boolean;             // 是否在远程运行
+  openUrl: (url: string) => Promise<void>;  // 浏览器打开器
   oauth: {
     createVpsAwareHandlers: Function;
   };
@@ -434,35 +436,35 @@ type ProviderAuthResult = {
 
 ---
 
-## Integration Requirements
+## 集成要求
 
-### 1. Required Environment/Dependencies
+### 1. 所需环境/依赖
 
 - Go ≥ 1.25
-- PicoClaw codebase (`pkg/providers/` and `pkg/auth/`)
-- `crypto` and `net/http` standard library packages
+- PicoClaw 代码库（`pkg/providers/` 和 `pkg/auth/`）
+- `crypto` 和 `net/http` 标准库包
 
-### 2. Required Headers for API Calls
+### 2. API 调用所需的请求头
 
 ```typescript
 const REQUIRED_HEADERS = {
   "Authorization": `Bearer ${accessToken}`,
   "Content-Type": "application/json",
-  "User-Agent": "antigravity",  // or "google-api-nodejs-client/9.15.1"
+  "User-Agent": "antigravity",  // 或 "google-api-nodejs-client/9.15.1"
   "X-Goog-Api-Client": "google-cloud-sdk vscode_cloudshelleditor/0.1",
 };
 
-// For loadCodeAssist calls, also include:
+// 对于 loadCodeAssist 调用，还需包含：
 const CLIENT_METADATA = {
-  ideType: "ANTIGRAVITY",  // or "IDE_UNSPECIFIED"
+  ideType: "ANTIGRAVITY",  // 或 "IDE_UNSPECIFIED"
   platform: "PLATFORM_UNSPECIFIED",
   pluginType: "GEMINI",
 };
 ```
 
-### 3. Model Schema Sanitization
+### 3. 模型 Schema 清理
 
-Antigravity uses Gemini-compatible models, so tool schemas must be sanitized:
+Antigravity 使用兼容 Gemini 的模型，因此工具 schema 必须进行清理：
 
 ```typescript
 const GOOGLE_SCHEMA_UNSUPPORTED_KEYWORDS = new Set([
@@ -488,17 +490,17 @@ const GOOGLE_SCHEMA_UNSUPPORTED_KEYWORDS = new Set([
   "maxProperties",
 ]);
 
-// Clean schema before sending
+// 发送前清理 schema
 function cleanToolSchemaForGemini(schema: Record<string, unknown>): unknown {
-  // Remove unsupported keywords
-  // Ensure top-level has type: "object"
-  // Flatten anyOf/oneOf unions
+  // 移除不支持的关键字
+  // 确保顶层有 type: "object"
+  // 展平 anyOf/oneOf 联合类型
 }
 ```
 
-### 4. Thinking Block Handling (Claude Models)
+### 4. 思维块处理（Claude 模型）
 
-For Antigravity Claude models, thinking blocks require special handling:
+对于 Antigravity 的 Claude 模型，思维块需要特殊处理：
 
 ```typescript
 const ANTIGRAVITY_SIGNATURE_RE = /^[A-Za-z0-9+/]+={0,2}$/;
@@ -506,34 +508,34 @@ const ANTIGRAVITY_SIGNATURE_RE = /^[A-Za-z0-9+/]+={0,2}$/;
 export function sanitizeAntigravityThinkingBlocks(
   messages: AgentMessage[]
 ): AgentMessage[] {
-  // Validate thinking signatures
-  // Normalize signature fields
-  // Discard unsigned thinking blocks
+  // 验证思维签名
+  // 规范化签名字段
+  // 丢弃未签名的思维块
 }
 ```
 
 ---
 
-## API Endpoints
+## API 端点
 
-### Authentication Endpoints
+### 认证端点
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `https://accounts.google.com/o/oauth2/v2/auth` | GET | OAuth authorization |
-| `https://oauth2.googleapis.com/token` | POST | Token exchange |
-| `https://www.googleapis.com/oauth2/v1/userinfo` | GET | User info (email) |
+| 端点 | 方法 | 用途 |
+|------|------|------|
+| `https://accounts.google.com/o/oauth2/v2/auth` | GET | OAuth 授权 |
+| `https://oauth2.googleapis.com/token` | POST | 令牌交换 |
+| `https://www.googleapis.com/oauth2/v1/userinfo` | GET | 用户信息（邮箱） |
 
-### Cloud Code Assist Endpoints
+### Cloud Code Assist 端点
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist` | POST | Load project info, credits, plan |
-| `https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | POST | List available models with quotas |
-| `https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse` | POST | Chat streaming endpoint |
+| 端点 | 方法 | 用途 |
+|------|------|------|
+| `https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist` | POST | 加载项目信息、额度、计划 |
+| `https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | POST | 列出可用模型及配额 |
+| `https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse` | POST | 聊天流式端点 |
 
-**API Request Format (Chat):**
-The `v1internal:streamGenerateContent` endpoint expects an envelope wrapping the standard Gemini request:
+**API 请求格式（聊天）：**
+`v1internal:streamGenerateContent` 端点期望一个包装标准 Gemini 请求的信封格式：
 
 ```json
 {
@@ -551,8 +553,8 @@ The `v1internal:streamGenerateContent` endpoint expects an envelope wrapping the
 }
 ```
 
-**API Response Format (SSE):**
-Each SSE message (`data: {...}`) is wrapped in a `response` field:
+**API 响应格式（SSE）：**
+每条 SSE 消息（`data: {...}`）被包装在 `response` 字段中：
 
 ```json
 {
@@ -569,9 +571,9 @@ Each SSE message (`data: {...}`) is wrapped in a `response` field:
 
 ---
 
-## Configuration
+## 配置
 
-### config.json Configuration
+### config.json 配置
 
 ```json
 {
@@ -590,9 +592,9 @@ Each SSE message (`data: {...}`) is wrapped in a `response` field:
 }
 ```
 
-### Auth Profile Storage
+### 认证配置文件存储
 
-Auth profiles are stored in `~/.picoclaw/auth.json`:
+认证配置文件存储在 `~/.picoclaw/auth.json` 中：
 
 ```json
 {
@@ -612,24 +614,24 @@ Auth profiles are stored in `~/.picoclaw/auth.json`:
 
 ---
 
-## Creating a New Provider in PicoClaw
+## 在 PicoClaw 中创建新提供商
 
-PicoClaw providers are implemented as Go packages under `pkg/providers/`. To add a new provider:
+PicoClaw 提供商以 Go 包的形式实现，位于 `pkg/providers/` 下。要添加新提供商：
 
-### Step-by-Step Implementation
+### 分步实现
 
-#### 1. Create Provider File
+#### 1. 创建提供商文件
 
-Create a new Go file in `pkg/providers/`:
+在 `pkg/providers/` 中创建新的 Go 文件：
 
 ```
 pkg/providers/
 └── your_provider.go
 ```
 
-#### 2. Implement the Provider Interface
+#### 2. 实现 Provider 接口
 
-Your provider must implement the `Provider` interface defined in `pkg/providers/types.go`:
+你的提供商必须实现 `pkg/providers/types.go` 中定义的 `Provider` 接口：
 
 ```go
 package providers
@@ -647,22 +649,22 @@ func NewYourProvider(apiKey, apiBase, proxy string) *YourProvider {
 }
 
 func (p *YourProvider) Chat(ctx context.Context, messages []Message, tools []Tool, cb StreamCallback) error {
-    // Implement chat completion with streaming
+    // 实现带流式传输的聊天补全
 }
 ```
 
-#### 3. Register in the Factory
+#### 3. 在工厂中注册
 
-Add your provider to the protocol switch in `pkg/providers/factory.go`:
+将你的提供商添加到 `pkg/providers/factory.go` 中的协议分支：
 
 ```go
 case "your-provider":
     return NewYourProvider(sel.apiKey, sel.apiBase, sel.proxy), nil
 ```
 
-#### 4. Add Default Config (Optional)
+#### 4. 添加默认配置（可选）
 
-Add a default entry in `pkg/config/defaults.go`:
+在 `pkg/config/defaults.go` 中添加默认条目：
 
 ```go
 {
@@ -672,16 +674,16 @@ Add a default entry in `pkg/config/defaults.go`:
 },
 ```
 
-#### 5. Add Auth Support (Optional)
+#### 5. 添加认证支持（可选）
 
-If your provider requires OAuth or special authentication, add a case to `cmd/picoclaw/internal/auth/helpers.go`:
+如果你的提供商需要 OAuth 或特殊认证，在 `cmd/picoclaw/internal/auth/helpers.go` 中添加分支：
 
 ```go
 case "your-provider":
     authLoginYourProvider()
 ```
 
-#### 6. Configure via `config.json`
+#### 6. 通过 `config.json` 配置
 
 ```json
 {
@@ -698,71 +700,71 @@ case "your-provider":
 
 ---
 
-## Testing Your Implementation
+## 测试你的实现
 
-### CLI Commands
+### CLI 命令
 
 ```bash
-# Authenticate with a provider
+# 使用提供商进行认证
 picoclaw auth login --provider your-provider
 
-# List models (for Antigravity)
+# 列出模型（用于 Antigravity）
 picoclaw auth models
 
-# Start the gateway
+# 启动网关
 picoclaw gateway
 
-# Run an agent with a specific model
+# 使用指定模型运行代理
 picoclaw agent -m "Hello" --model your-model
 ```
 
-### Environment Variables for Testing
+### 测试用环境变量
 
 ```bash
-# Override default model
+# 覆盖默认模型
 export PICOCLAW_AGENTS_DEFAULTS_MODEL=your-model
 
-# Override provider settings
+# 覆盖提供商设置
 export PICOCLAW_MODEL_LIST='[{"model_name":"your-model","model":"your-provider/model-name","api_key":"..."}]'
 ```
 
 ---
 
-## References
+## 参考资料
 
-- **Source Files:**
-  - `pkg/providers/antigravity_provider.go` - Antigravity provider implementation
-  - `pkg/auth/oauth.go` - OAuth flow implementation
-  - `pkg/auth/store.go` - Auth credential storage (`~/.picoclaw/auth.json`)
-  - `pkg/providers/factory.go` - Provider factory and protocol routing
-  - `pkg/providers/types.go` - Provider interface definitions
-  - `cmd/picoclaw/internal/auth/helpers.go` - Auth CLI commands
+- **源文件：**
+  - `pkg/providers/antigravity_provider.go` - Antigravity 提供商实现
+  - `pkg/auth/oauth.go` - OAuth 流程实现
+  - `pkg/auth/store.go` - 认证凭据存储（`~/.picoclaw/auth.json`）
+  - `pkg/providers/factory.go` - 提供商工厂和协议路由
+  - `pkg/providers/types.go` - 提供商接口定义
+  - `cmd/picoclaw/internal/auth/helpers.go` - 认证 CLI 命令
 
-- **Documentation:**
-  - `docs/ANTIGRAVITY_USAGE.md` - Antigravity usage guide
-  - `docs/migration/model-list-migration.md` - Migration guide
-
----
-
-## Notes
-
-1. **Google Cloud Project:** Antigravity requires Gemini for Google Cloud to be enabled on your Google Cloud project
-2. **Quotas:** Uses Google Cloud project quotas (not separate billing)
-3. **Model Access:** Available models depend on your Google Cloud project configuration
-4. **Thinking Blocks:** Claude models via Antigravity require special handling of thinking blocks with signatures
-5. **Schema Sanitization:** Tool schemas must be sanitized to remove unsupported JSON Schema keywords
+- **文档：**
+  - `docs/ANTIGRAVITY_USAGE.md` - Antigravity 使用指南
+  - `docs/migration/model-list-migration.md` - 迁移指南
 
 ---
 
+## 注意事项
+
+1. **Google Cloud 项目：** Antigravity 要求在你的 Google Cloud 项目上启用 Gemini for Google Cloud
+2. **配额：** 使用 Google Cloud 项目配额（非独立计费）
+3. **模型访问：** 可用模型取决于你的 Google Cloud 项目配置
+4. **思维块：** 通过 Antigravity 使用的 Claude 模型需要对带签名的思维块进行特殊处理
+5. **Schema 清理：** 工具 schema 必须清理以移除不支持的 JSON Schema 关键字
+
 ---
 
-## Common Error Handling
+---
 
-### 1. Rate Limiting (HTTP 429)
+## 常见错误处理
 
-Antigravity returns a 429 error when project/model quotas are exhausted. The error response often contains a `quotaResetDelay` in the `details` field.
+### 1. 速率限制（HTTP 429）
 
-**Example 429 Error:**
+当项目/模型配额耗尽时，Antigravity 会返回 429 错误。错误响应通常在 `details` 字段中包含 `quotaResetDelay`。
+
+**429 错误示例：**
 ```json
 {
   "error": {
@@ -781,27 +783,27 @@ Antigravity returns a 429 error when project/model quotas are exhausted. The err
 }
 ```
 
-### 2. Empty Responses (Restricted Models)
+### 2. 空响应（受限模型）
 
-Some models might show up in the available models list but return an empty response (200 OK but empty SSE stream). This usually happens for preview or restricted models that the current project doesn't have permission to use.
+某些模型可能出现在可用模型列表中，但返回空响应（200 OK 但 SSE 流为空）。这通常发生在当前项目没有权限使用的预览版或受限模型上。
 
-**Treatment:** Treat empty responses as errors informing the user that the model might be restricted or invalid for their project.
+**处理方式：** 将空响应视为错误，通知用户该模型可能对其项目受限或无效。
 
 ---
 
-## Troubleshooting
+## 故障排除
 
-### "Token expired"
-- Refresh OAuth tokens: `picoclaw auth login --provider antigravity`
+### "Token expired"（令牌已过期）
+- 刷新 OAuth 令牌：`picoclaw auth login --provider antigravity`
 
-### "Gemini for Google Cloud is not enabled"
-- Enable the API in your Google Cloud Console
+### "Gemini for Google Cloud is not enabled"（Gemini for Google Cloud 未启用）
+- 在 Google Cloud Console 中启用该 API
 
-### "Project not found"
-- Ensure your Google Cloud project has the necessary APIs enabled
-- Check that the project ID is correctly fetched during authentication
+### "Project not found"（项目未找到）
+- 确保你的 Google Cloud 项目已启用必要的 API
+- 检查认证过程中项目 ID 是否正确获取
 
-### Models not appearing in list
-- Verify OAuth authentication completed successfully
-- Check auth profile storage: `~/.picoclaw/auth.json`
-- Re-run `picoclaw auth login --provider antigravity`
+### 模型未出现在列表中
+- 验证 OAuth 认证是否成功完成
+- 检查认证配置文件存储：`~/.picoclaw/auth.json`
+- 重新运行 `picoclaw auth login --provider antigravity`

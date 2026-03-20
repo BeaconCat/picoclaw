@@ -1,31 +1,33 @@
-# Antigravity Authentication & Integration Guide
+> Retour au [README](../../README.fr.md)
 
-## Overview
+# Guide d'authentification et d'intégration Antigravity
 
-**Antigravity** (Google Cloud Code Assist) is a Google-backed AI model provider that offers access to models like Claude Opus 4.6 and Gemini through Google's Cloud infrastructure. This document provides a complete guide on how authentication works, how to fetch models, and how to implement a new provider in PicoClaw.
+## Aperçu
+
+**Antigravity** (Google Cloud Code Assist) est un fournisseur de modèles IA soutenu par Google qui offre l'accès à des modèles tels que Claude Opus 4.6 et Gemini via l'infrastructure cloud de Google. Ce document fournit un guide complet sur le fonctionnement de l'authentification, la récupération des modèles et l'implémentation d'un nouveau fournisseur dans PicoClaw.
 
 ---
 
-## Table of Contents
+## Table des matières
 
-1. [Authentication Flow](#authentication-flow)
-2. [OAuth Implementation Details](#oauth-implementation-details)
-3. [Token Management](#token-management)
-4. [Models List Fetching](#models-list-fetching)
-5. [Usage Tracking](#usage-tracking)
-6. [Provider Plugin Structure](#provider-plugin-structure)
-7. [Integration Requirements](#integration-requirements)
-8. [API Endpoints](#api-endpoints)
+1. [Flux d'authentification](#flux-dauthentification)
+2. [Détails de l'implémentation OAuth](#détails-de-limplémentation-oauth)
+3. [Gestion des jetons](#gestion-des-jetons)
+4. [Récupération de la liste des modèles](#récupération-de-la-liste-des-modèles)
+5. [Suivi de l'utilisation](#suivi-de-lutilisation)
+6. [Structure du plugin fournisseur](#structure-du-plugin-fournisseur)
+7. [Exigences d'intégration](#exigences-dintégration)
+8. [Points de terminaison API](#points-de-terminaison-api)
 9. [Configuration](#configuration)
-10. [Creating a New Provider in PicoClaw](#creating-a-new-provider-in-picoclaw)
+10. [Créer un nouveau fournisseur dans PicoClaw](#créer-un-nouveau-fournisseur-dans-picoclaw)
 
 ---
 
-## Authentication Flow
+## Flux d'authentification
 
-### 1. OAuth 2.0 with PKCE
+### 1. OAuth 2.0 avec PKCE
 
-Antigravity uses **OAuth 2.0 with PKCE (Proof Key for Code Exchange)** for secure authentication:
+Antigravity utilise **OAuth 2.0 avec PKCE (Proof Key for Code Exchange)** pour une authentification sécurisée :
 
 ```
 ┌─────────────┐                                    ┌─────────────────┐
@@ -40,9 +42,9 @@ Antigravity uses **OAuth 2.0 with PKCE (Proof Key for Code Exchange)** for secur
 └─────────────┘                                    └─────────────────┘
 ```
 
-### 2. Detailed Steps
+### 2. Étapes détaillées
 
-#### Step 1: Generate PKCE Parameters
+#### Étape 1 : Générer les paramètres PKCE
 ```typescript
 function generatePkce(): { verifier: string; challenge: string } {
   const verifier = randomBytes(32).toString("hex");
@@ -51,7 +53,7 @@ function generatePkce(): { verifier: string; challenge: string } {
 }
 ```
 
-#### Step 2: Build Authorization URL
+#### Étape 2 : Construire l'URL d'autorisation
 ```typescript
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const REDIRECT_URI = "http://localhost:51121/oauth-callback";
@@ -71,7 +73,7 @@ function buildAuthUrl(params: { challenge: string; state: string }): string {
 }
 ```
 
-**Required Scopes:**
+**Portées requises :**
 ```typescript
 const SCOPES = [
   "https://www.googleapis.com/auth/cloud-platform",
@@ -82,20 +84,20 @@ const SCOPES = [
 ];
 ```
 
-#### Step 3: Handle OAuth Callback
+#### Étape 3 : Gérer le callback OAuth
 
-**Automatic Mode (Local Development):**
-- Start a local HTTP server on port 51121
-- Wait for the redirect from Google
-- Extract the authorization code from the query parameters
+**Mode automatique (développement local) :**
+- Démarrer un serveur HTTP local sur le port 51121
+- Attendre la redirection de Google
+- Extraire le code d'autorisation des paramètres de requête
 
-**Manual Mode (Remote/Headless):**
-- Display the authorization URL to the user
-- User completes authentication in their browser
-- User pastes the full redirect URL back into the terminal
-- Parse the code from the pasted URL
+**Mode manuel (distant/sans interface graphique) :**
+- Afficher l'URL d'autorisation à l'utilisateur
+- L'utilisateur complète l'authentification dans son navigateur
+- L'utilisateur colle l'URL de redirection complète dans le terminal
+- Analyser le code depuis l'URL collée
 
-#### Step 4: Exchange Code for Tokens
+#### Étape 4 : Échanger le code contre des jetons
 ```typescript
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
@@ -126,9 +128,9 @@ async function exchangeCode(params: {
 }
 ```
 
-#### Step 5: Fetch Additional User Data
+#### Étape 5 : Récupérer les données utilisateur supplémentaires
 
-**User Email:**
+**E-mail de l'utilisateur :**
 ```typescript
 async function fetchUserEmail(accessToken: string): Promise<string | undefined> {
   const response = await fetch(
@@ -140,7 +142,7 @@ async function fetchUserEmail(accessToken: string): Promise<string | undefined> 
 }
 ```
 
-**Project ID (Required for API calls):**
+**ID du projet (requis pour les appels API) :**
 ```typescript
 async function fetchProjectId(accessToken: string): Promise<string> {
   const headers = {
@@ -171,17 +173,17 @@ async function fetchProjectId(accessToken: string): Promise<string> {
   );
 
   const data = await response.json();
-  return data.cloudaicompanionProject || "rising-fact-p41fc"; // Default fallback
+  return data.cloudaicompanionProject || "rising-fact-p41fc"; // Valeur par défaut
 }
 ```
 
 ---
 
-## OAuth Implementation Details
+## Détails de l'implémentation OAuth
 
-### Client Credentials
+### Identifiants client
 
-**Important:** These are base64-encoded in the source code for sync with pi-ai:
+**Important :** Ceux-ci sont encodés en base64 dans le code source pour la synchronisation avec pi-ai :
 
 ```typescript
 const decode = (s: string) => Buffer.from(s, "base64").toString();
@@ -192,17 +194,17 @@ const CLIENT_ID = decode(
 const CLIENT_SECRET = decode("R09DU1BYLUs1OEZXUjQ4NkxkTEoxbUxCOHNYQzR6NnFEQWY=");
 ```
 
-### OAuth Flow Modes
+### Modes de flux OAuth
 
-1. **Automatic Flow** (Local machines with browser):
-   - Opens browser automatically
-   - Local callback server captures redirect
-   - No user interaction required after initial auth
+1. **Flux automatique** (machines locales avec navigateur) :
+   - Ouvre le navigateur automatiquement
+   - Le serveur de callback local capture la redirection
+   - Aucune interaction utilisateur requise après l'authentification initiale
 
-2. **Manual Flow** (Remote/headless/WSL2):
-   - URL displayed for manual copy-paste
-   - User completes auth in external browser
-   - User pastes full redirect URL back
+2. **Flux manuel** (distant/sans interface/WSL2) :
+   - URL affichée pour copier-coller manuellement
+   - L'utilisateur complète l'authentification dans un navigateur externe
+   - L'utilisateur colle l'URL de redirection complète
 
 ```typescript
 function shouldUseManualOAuthFlow(isRemote: boolean): boolean {
@@ -212,31 +214,31 @@ function shouldUseManualOAuthFlow(isRemote: boolean): boolean {
 
 ---
 
-## Token Management
+## Gestion des jetons
 
-### Auth Profile Structure
+### Structure du profil d'authentification
 
 ```typescript
 type OAuthCredential = {
   type: "oauth";
   provider: "google-antigravity";
-  access: string;           // Access token
-  refresh: string;          // Refresh token
-  expires: number;          // Expiration timestamp (ms since epoch)
-  email?: string;           // User email
-  projectId?: string;       // Google Cloud project ID
+  access: string;           // Jeton d'accès
+  refresh: string;          // Jeton de rafraîchissement
+  expires: number;          // Horodatage d'expiration (ms depuis epoch)
+  email?: string;           // E-mail de l'utilisateur
+  projectId?: string;       // ID du projet Google Cloud
 };
 ```
 
-### Token Refresh
+### Rafraîchissement des jetons
 
-The credential includes a refresh token that can be used to obtain new access tokens when the current one expires. The expiration is set with a 5-minute buffer to prevent race conditions.
+Les identifiants incluent un jeton de rafraîchissement qui peut être utilisé pour obtenir de nouveaux jetons d'accès lorsque le jeton actuel expire. L'expiration est définie avec un tampon de 5 minutes pour éviter les conditions de concurrence.
 
 ---
 
-## Models List Fetching
+## Récupération de la liste des modèles
 
-### Fetch Available Models
+### Récupérer les modèles disponibles
 
 ```typescript
 const BASE_URL = "https://cloudcode-pa.googleapis.com";
@@ -263,7 +265,7 @@ async function fetchAvailableModels(
 
   const data = await response.json();
   
-  // Returns models with quota information
+  // Retourne les modèles avec les informations de quota
   return Object.entries(data.models).map(([modelId, modelInfo]) => ({
     id: modelId,
     displayName: modelInfo.displayName,
@@ -276,7 +278,7 @@ async function fetchAvailableModels(
 }
 ```
 
-### Response Format
+### Format de réponse
 
 ```typescript
 type FetchAvailableModelsResponse = {
@@ -284,7 +286,7 @@ type FetchAvailableModelsResponse = {
     displayName?: string;
     quotaInfo?: {
       remainingFraction?: number | string;
-      resetTime?: string;      // ISO 8601 timestamp
+      resetTime?: string;      // Horodatage ISO 8601
       isExhausted?: boolean;
     };
   }>;
@@ -293,16 +295,16 @@ type FetchAvailableModelsResponse = {
 
 ---
 
-## Usage Tracking
+## Suivi de l'utilisation
 
-### Fetch Usage Data
+### Récupérer les données d'utilisation
 
 ```typescript
 export async function fetchAntigravityUsage(
   token: string,
   timeoutMs: number
 ): Promise<ProviderUsageSnapshot> {
-  // 1. Fetch credits and plan info
+  // 1. Récupérer les crédits et les informations du plan
   const loadCodeAssistRes = await fetch(
     `${BASE_URL}/v1internal:loadCodeAssist`,
     {
@@ -321,10 +323,10 @@ export async function fetchAntigravityUsage(
     }
   );
 
-  // Extract credits info
+  // Extraire les informations de crédits
   const { availablePromptCredits, planInfo, currentTier } = data;
   
-  // 2. Fetch model quotas
+  // 2. Récupérer les quotas des modèles
   const modelsRes = await fetch(
     `${BASE_URL}/v1internal:fetchAvailableModels`,
     {
@@ -334,20 +336,20 @@ export async function fetchAntigravityUsage(
     }
   );
 
-  // Build usage windows
+  // Construire les fenêtres d'utilisation
   return {
     provider: "google-antigravity",
     displayName: "Google Antigravity",
     windows: [
       { label: "Credits", usedPercent: calculateUsedPercent(available, monthly) },
-      // Individual model quotas...
+      // Quotas individuels des modèles...
     ],
     plan: currentTier?.name || planType,
   };
 }
 ```
 
-### Usage Response Structure
+### Structure de la réponse d'utilisation
 
 ```typescript
 type ProviderUsageSnapshot = {
@@ -359,17 +361,17 @@ type ProviderUsageSnapshot = {
 };
 
 type UsageWindow = {
-  label: string;           // "Credits" or model ID
+  label: string;           // "Credits" ou ID du modèle
   usedPercent: number;     // 0-100
-  resetAt?: number;        // Timestamp when quota resets
+  resetAt?: number;        // Horodatage de réinitialisation du quota
 };
 ```
 
 ---
 
-## Provider Plugin Structure
+## Structure du plugin fournisseur
 
-### Plugin Definition
+### Définition du plugin
 
 ```typescript
 const antigravityPlugin = {
@@ -392,7 +394,7 @@ const antigravityPlugin = {
           hint: "PKCE + localhost callback",
           kind: "oauth",
           run: async (ctx: ProviderAuthContext) => {
-            // OAuth implementation here
+            // Implémentation OAuth ici
           },
         },
       ],
@@ -408,10 +410,10 @@ type ProviderAuthContext = {
   config: PicoClawConfig;
   agentDir?: string;
   workspaceDir?: string;
-  prompter: WizardPrompter;      // UI prompts/notifications
-  runtime: RuntimeEnv;           // Logging, etc.
-  isRemote: boolean;             // Whether running remotely
-  openUrl: (url: string) => Promise<void>;  // Browser opener
+  prompter: WizardPrompter;      // Invites/notifications UI
+  runtime: RuntimeEnv;           // Journalisation, etc.
+  isRemote: boolean;             // Exécution à distance ou non
+  openUrl: (url: string) => Promise<void>;  // Ouverture du navigateur
   oauth: {
     createVpsAwareHandlers: Function;
   };
@@ -434,35 +436,35 @@ type ProviderAuthResult = {
 
 ---
 
-## Integration Requirements
+## Exigences d'intégration
 
-### 1. Required Environment/Dependencies
+### 1. Environnement/dépendances requis
 
 - Go ≥ 1.25
-- PicoClaw codebase (`pkg/providers/` and `pkg/auth/`)
-- `crypto` and `net/http` standard library packages
+- Base de code PicoClaw (`pkg/providers/` et `pkg/auth/`)
+- Packages de la bibliothèque standard `crypto` et `net/http`
 
-### 2. Required Headers for API Calls
+### 2. En-têtes requis pour les appels API
 
 ```typescript
 const REQUIRED_HEADERS = {
   "Authorization": `Bearer ${accessToken}`,
   "Content-Type": "application/json",
-  "User-Agent": "antigravity",  // or "google-api-nodejs-client/9.15.1"
+  "User-Agent": "antigravity",  // ou "google-api-nodejs-client/9.15.1"
   "X-Goog-Api-Client": "google-cloud-sdk vscode_cloudshelleditor/0.1",
 };
 
-// For loadCodeAssist calls, also include:
+// Pour les appels loadCodeAssist, inclure également :
 const CLIENT_METADATA = {
-  ideType: "ANTIGRAVITY",  // or "IDE_UNSPECIFIED"
+  ideType: "ANTIGRAVITY",  // ou "IDE_UNSPECIFIED"
   platform: "PLATFORM_UNSPECIFIED",
   pluginType: "GEMINI",
 };
 ```
 
-### 3. Model Schema Sanitization
+### 3. Assainissement des schémas de modèles
 
-Antigravity uses Gemini-compatible models, so tool schemas must be sanitized:
+Antigravity utilise des modèles compatibles Gemini, les schémas d'outils doivent donc être assainis :
 
 ```typescript
 const GOOGLE_SCHEMA_UNSUPPORTED_KEYWORDS = new Set([
@@ -488,17 +490,17 @@ const GOOGLE_SCHEMA_UNSUPPORTED_KEYWORDS = new Set([
   "maxProperties",
 ]);
 
-// Clean schema before sending
+// Nettoyer le schéma avant l'envoi
 function cleanToolSchemaForGemini(schema: Record<string, unknown>): unknown {
-  // Remove unsupported keywords
-  // Ensure top-level has type: "object"
-  // Flatten anyOf/oneOf unions
+  // Supprimer les mots-clés non supportés
+  // S'assurer que le niveau supérieur a type: "object"
+  // Aplatir les unions anyOf/oneOf
 }
 ```
 
-### 4. Thinking Block Handling (Claude Models)
+### 4. Gestion des blocs de réflexion (modèles Claude)
 
-For Antigravity Claude models, thinking blocks require special handling:
+Pour les modèles Claude via Antigravity, les blocs de réflexion nécessitent un traitement spécial :
 
 ```typescript
 const ANTIGRAVITY_SIGNATURE_RE = /^[A-Za-z0-9+/]+={0,2}$/;
@@ -506,34 +508,34 @@ const ANTIGRAVITY_SIGNATURE_RE = /^[A-Za-z0-9+/]+={0,2}$/;
 export function sanitizeAntigravityThinkingBlocks(
   messages: AgentMessage[]
 ): AgentMessage[] {
-  // Validate thinking signatures
-  // Normalize signature fields
-  // Discard unsigned thinking blocks
+  // Valider les signatures de réflexion
+  // Normaliser les champs de signature
+  // Rejeter les blocs de réflexion non signés
 }
 ```
 
 ---
 
-## API Endpoints
+## Points de terminaison API
 
-### Authentication Endpoints
+### Points de terminaison d'authentification
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `https://accounts.google.com/o/oauth2/v2/auth` | GET | OAuth authorization |
-| `https://oauth2.googleapis.com/token` | POST | Token exchange |
-| `https://www.googleapis.com/oauth2/v1/userinfo` | GET | User info (email) |
+| Point de terminaison | Méthode | Objectif |
+|---------------------|---------|----------|
+| `https://accounts.google.com/o/oauth2/v2/auth` | GET | Autorisation OAuth |
+| `https://oauth2.googleapis.com/token` | POST | Échange de jetons |
+| `https://www.googleapis.com/oauth2/v1/userinfo` | GET | Informations utilisateur (e-mail) |
 
-### Cloud Code Assist Endpoints
+### Points de terminaison Cloud Code Assist
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist` | POST | Load project info, credits, plan |
-| `https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | POST | List available models with quotas |
-| `https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse` | POST | Chat streaming endpoint |
+| Point de terminaison | Méthode | Objectif |
+|---------------------|---------|----------|
+| `https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist` | POST | Charger les infos du projet, crédits, plan |
+| `https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | POST | Lister les modèles disponibles avec quotas |
+| `https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse` | POST | Point de terminaison de streaming de chat |
 
-**API Request Format (Chat):**
-The `v1internal:streamGenerateContent` endpoint expects an envelope wrapping the standard Gemini request:
+**Format de requête API (chat) :**
+Le point de terminaison `v1internal:streamGenerateContent` attend une enveloppe encapsulant la requête Gemini standard :
 
 ```json
 {
@@ -551,8 +553,8 @@ The `v1internal:streamGenerateContent` endpoint expects an envelope wrapping the
 }
 ```
 
-**API Response Format (SSE):**
-Each SSE message (`data: {...}`) is wrapped in a `response` field:
+**Format de réponse API (SSE) :**
+Chaque message SSE (`data: {...}`) est encapsulé dans un champ `response` :
 
 ```json
 {
@@ -571,7 +573,7 @@ Each SSE message (`data: {...}`) is wrapped in a `response` field:
 
 ## Configuration
 
-### config.json Configuration
+### Configuration config.json
 
 ```json
 {
@@ -590,9 +592,9 @@ Each SSE message (`data: {...}`) is wrapped in a `response` field:
 }
 ```
 
-### Auth Profile Storage
+### Stockage du profil d'authentification
 
-Auth profiles are stored in `~/.picoclaw/auth.json`:
+Les profils d'authentification sont stockés dans `~/.picoclaw/auth.json` :
 
 ```json
 {
@@ -612,24 +614,24 @@ Auth profiles are stored in `~/.picoclaw/auth.json`:
 
 ---
 
-## Creating a New Provider in PicoClaw
+## Créer un nouveau fournisseur dans PicoClaw
 
-PicoClaw providers are implemented as Go packages under `pkg/providers/`. To add a new provider:
+Les fournisseurs PicoClaw sont implémentés en tant que packages Go sous `pkg/providers/`. Pour ajouter un nouveau fournisseur :
 
-### Step-by-Step Implementation
+### Implémentation étape par étape
 
-#### 1. Create Provider File
+#### 1. Créer le fichier du fournisseur
 
-Create a new Go file in `pkg/providers/`:
+Créez un nouveau fichier Go dans `pkg/providers/` :
 
 ```
 pkg/providers/
 └── your_provider.go
 ```
 
-#### 2. Implement the Provider Interface
+#### 2. Implémenter l'interface Provider
 
-Your provider must implement the `Provider` interface defined in `pkg/providers/types.go`:
+Votre fournisseur doit implémenter l'interface `Provider` définie dans `pkg/providers/types.go` :
 
 ```go
 package providers
@@ -647,22 +649,22 @@ func NewYourProvider(apiKey, apiBase, proxy string) *YourProvider {
 }
 
 func (p *YourProvider) Chat(ctx context.Context, messages []Message, tools []Tool, cb StreamCallback) error {
-    // Implement chat completion with streaming
+    // Implémenter la complétion de chat avec streaming
 }
 ```
 
-#### 3. Register in the Factory
+#### 3. Enregistrer dans la factory
 
-Add your provider to the protocol switch in `pkg/providers/factory.go`:
+Ajoutez votre fournisseur au switch de protocole dans `pkg/providers/factory.go` :
 
 ```go
 case "your-provider":
     return NewYourProvider(sel.apiKey, sel.apiBase, sel.proxy), nil
 ```
 
-#### 4. Add Default Config (Optional)
+#### 4. Ajouter la configuration par défaut (optionnel)
 
-Add a default entry in `pkg/config/defaults.go`:
+Ajoutez une entrée par défaut dans `pkg/config/defaults.go` :
 
 ```go
 {
@@ -672,16 +674,16 @@ Add a default entry in `pkg/config/defaults.go`:
 },
 ```
 
-#### 5. Add Auth Support (Optional)
+#### 5. Ajouter le support d'authentification (optionnel)
 
-If your provider requires OAuth or special authentication, add a case to `cmd/picoclaw/internal/auth/helpers.go`:
+Si votre fournisseur nécessite OAuth ou une authentification spéciale, ajoutez un cas dans `cmd/picoclaw/internal/auth/helpers.go` :
 
 ```go
 case "your-provider":
     authLoginYourProvider()
 ```
 
-#### 6. Configure via `config.json`
+#### 6. Configurer via `config.json`
 
 ```json
 {
@@ -698,71 +700,71 @@ case "your-provider":
 
 ---
 
-## Testing Your Implementation
+## Tester votre implémentation
 
-### CLI Commands
+### Commandes CLI
 
 ```bash
-# Authenticate with a provider
+# S'authentifier avec un fournisseur
 picoclaw auth login --provider your-provider
 
-# List models (for Antigravity)
+# Lister les modèles (pour Antigravity)
 picoclaw auth models
 
-# Start the gateway
+# Démarrer la passerelle
 picoclaw gateway
 
-# Run an agent with a specific model
+# Exécuter un agent avec un modèle spécifique
 picoclaw agent -m "Hello" --model your-model
 ```
 
-### Environment Variables for Testing
+### Variables d'environnement pour les tests
 
 ```bash
-# Override default model
+# Remplacer le modèle par défaut
 export PICOCLAW_AGENTS_DEFAULTS_MODEL=your-model
 
-# Override provider settings
+# Remplacer les paramètres du fournisseur
 export PICOCLAW_MODEL_LIST='[{"model_name":"your-model","model":"your-provider/model-name","api_key":"..."}]'
 ```
 
 ---
 
-## References
+## Références
 
-- **Source Files:**
-  - `pkg/providers/antigravity_provider.go` - Antigravity provider implementation
-  - `pkg/auth/oauth.go` - OAuth flow implementation
-  - `pkg/auth/store.go` - Auth credential storage (`~/.picoclaw/auth.json`)
-  - `pkg/providers/factory.go` - Provider factory and protocol routing
-  - `pkg/providers/types.go` - Provider interface definitions
-  - `cmd/picoclaw/internal/auth/helpers.go` - Auth CLI commands
+- **Fichiers source :**
+  - `pkg/providers/antigravity_provider.go` - Implémentation du fournisseur Antigravity
+  - `pkg/auth/oauth.go` - Implémentation du flux OAuth
+  - `pkg/auth/store.go` - Stockage des identifiants d'authentification (`~/.picoclaw/auth.json`)
+  - `pkg/providers/factory.go` - Factory des fournisseurs et routage de protocole
+  - `pkg/providers/types.go` - Définitions de l'interface fournisseur
+  - `cmd/picoclaw/internal/auth/helpers.go` - Commandes CLI d'authentification
 
-- **Documentation:**
-  - `docs/ANTIGRAVITY_USAGE.md` - Antigravity usage guide
-  - `docs/migration/model-list-migration.md` - Migration guide
+- **Documentation :**
+  - `docs/ANTIGRAVITY_USAGE.md` - Guide d'utilisation d'Antigravity
+  - `docs/migration/model-list-migration.md` - Guide de migration
 
 ---
 
 ## Notes
 
-1. **Google Cloud Project:** Antigravity requires Gemini for Google Cloud to be enabled on your Google Cloud project
-2. **Quotas:** Uses Google Cloud project quotas (not separate billing)
-3. **Model Access:** Available models depend on your Google Cloud project configuration
-4. **Thinking Blocks:** Claude models via Antigravity require special handling of thinking blocks with signatures
-5. **Schema Sanitization:** Tool schemas must be sanitized to remove unsupported JSON Schema keywords
+1. **Projet Google Cloud :** Antigravity nécessite que Gemini for Google Cloud soit activé sur votre projet Google Cloud
+2. **Quotas :** Utilise les quotas du projet Google Cloud (pas de facturation séparée)
+3. **Accès aux modèles :** Les modèles disponibles dépendent de la configuration de votre projet Google Cloud
+4. **Blocs de réflexion :** Les modèles Claude via Antigravity nécessitent un traitement spécial des blocs de réflexion avec signatures
+5. **Assainissement des schémas :** Les schémas d'outils doivent être assainis pour supprimer les mots-clés JSON Schema non supportés
 
 ---
 
 ---
 
-## Common Error Handling
+## Gestion des erreurs courantes
 
-### 1. Rate Limiting (HTTP 429)
+### 1. Limitation de débit (HTTP 429)
 
-Antigravity returns a 429 error when project/model quotas are exhausted. The error response often contains a `quotaResetDelay` in the `details` field.
+Antigravity retourne une erreur 429 lorsque les quotas du projet/modèle sont épuisés. La réponse d'erreur contient souvent un `quotaResetDelay` dans le champ `details`.
 
-**Example 429 Error:**
+**Exemple d'erreur 429 :**
 ```json
 {
   "error": {
@@ -781,27 +783,27 @@ Antigravity returns a 429 error when project/model quotas are exhausted. The err
 }
 ```
 
-### 2. Empty Responses (Restricted Models)
+### 2. Réponses vides (modèles restreints)
 
-Some models might show up in the available models list but return an empty response (200 OK but empty SSE stream). This usually happens for preview or restricted models that the current project doesn't have permission to use.
+Certains modèles peuvent apparaître dans la liste des modèles disponibles mais retourner une réponse vide (200 OK mais flux SSE vide). Cela se produit généralement pour les modèles en préversion ou restreints que le projet actuel n'a pas la permission d'utiliser.
 
-**Treatment:** Treat empty responses as errors informing the user that the model might be restricted or invalid for their project.
+**Traitement :** Traiter les réponses vides comme des erreurs informant l'utilisateur que le modèle pourrait être restreint ou invalide pour son projet.
 
 ---
 
-## Troubleshooting
+## Dépannage
 
-### "Token expired"
-- Refresh OAuth tokens: `picoclaw auth login --provider antigravity`
+### "Token expired" (jeton expiré)
+- Rafraîchir les jetons OAuth : `picoclaw auth login --provider antigravity`
 
-### "Gemini for Google Cloud is not enabled"
-- Enable the API in your Google Cloud Console
+### "Gemini for Google Cloud is not enabled" (Gemini for Google Cloud n'est pas activé)
+- Activer l'API dans votre Google Cloud Console
 
-### "Project not found"
-- Ensure your Google Cloud project has the necessary APIs enabled
-- Check that the project ID is correctly fetched during authentication
+### "Project not found" (projet non trouvé)
+- Vérifier que votre projet Google Cloud a les API nécessaires activées
+- Vérifier que l'ID du projet est correctement récupéré lors de l'authentification
 
-### Models not appearing in list
-- Verify OAuth authentication completed successfully
-- Check auth profile storage: `~/.picoclaw/auth.json`
-- Re-run `picoclaw auth login --provider antigravity`
+### Les modèles n'apparaissent pas dans la liste
+- Vérifier que l'authentification OAuth s'est terminée avec succès
+- Vérifier le stockage du profil d'authentification : `~/.picoclaw/auth.json`
+- Relancer `picoclaw auth login --provider antigravity`

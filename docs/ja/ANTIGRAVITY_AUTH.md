@@ -1,31 +1,33 @@
-# Antigravity Authentication & Integration Guide
+> [README](../../README.ja.md) に戻る
 
-## Overview
+# Antigravity 認証・統合ガイド
 
-**Antigravity** (Google Cloud Code Assist) is a Google-backed AI model provider that offers access to models like Claude Opus 4.6 and Gemini through Google's Cloud infrastructure. This document provides a complete guide on how authentication works, how to fetch models, and how to implement a new provider in PicoClaw.
+## 概要
 
----
-
-## Table of Contents
-
-1. [Authentication Flow](#authentication-flow)
-2. [OAuth Implementation Details](#oauth-implementation-details)
-3. [Token Management](#token-management)
-4. [Models List Fetching](#models-list-fetching)
-5. [Usage Tracking](#usage-tracking)
-6. [Provider Plugin Structure](#provider-plugin-structure)
-7. [Integration Requirements](#integration-requirements)
-8. [API Endpoints](#api-endpoints)
-9. [Configuration](#configuration)
-10. [Creating a New Provider in PicoClaw](#creating-a-new-provider-in-picoclaw)
+**Antigravity**（Google Cloud Code Assist）は、Google が提供する AI モデルプロバイダーで、Google のクラウドインフラストラクチャを通じて Claude Opus 4.6 や Gemini などのモデルへのアクセスを提供します。本ドキュメントでは、認証の仕組み、モデルの取得方法、PicoClaw での新しいプロバイダーの実装方法について完全なガイドを提供します。
 
 ---
 
-## Authentication Flow
+## 目次
 
-### 1. OAuth 2.0 with PKCE
+1. [認証フロー](#認証フロー)
+2. [OAuth 実装の詳細](#oauth-実装の詳細)
+3. [トークン管理](#トークン管理)
+4. [モデルリストの取得](#モデルリストの取得)
+5. [使用量トラッキング](#使用量トラッキング)
+6. [プロバイダープラグイン構造](#プロバイダープラグイン構造)
+7. [統合要件](#統合要件)
+8. [API エンドポイント](#api-エンドポイント)
+9. [設定](#設定)
+10. [PicoClaw での新しいプロバイダーの作成](#picoclaw-での新しいプロバイダーの作成)
 
-Antigravity uses **OAuth 2.0 with PKCE (Proof Key for Code Exchange)** for secure authentication:
+---
+
+## 認証フロー
+
+### 1. PKCE 付き OAuth 2.0
+
+Antigravity はセキュアな認証のために **OAuth 2.0 with PKCE（Proof Key for Code Exchange）** を使用します：
 
 ```
 ┌─────────────┐                                    ┌─────────────────┐
@@ -40,9 +42,9 @@ Antigravity uses **OAuth 2.0 with PKCE (Proof Key for Code Exchange)** for secur
 └─────────────┘                                    └─────────────────┘
 ```
 
-### 2. Detailed Steps
+### 2. 詳細手順
 
-#### Step 1: Generate PKCE Parameters
+#### ステップ 1：PKCE パラメータの生成
 ```typescript
 function generatePkce(): { verifier: string; challenge: string } {
   const verifier = randomBytes(32).toString("hex");
@@ -51,7 +53,7 @@ function generatePkce(): { verifier: string; challenge: string } {
 }
 ```
 
-#### Step 2: Build Authorization URL
+#### ステップ 2：認可 URL の構築
 ```typescript
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const REDIRECT_URI = "http://localhost:51121/oauth-callback";
@@ -71,7 +73,7 @@ function buildAuthUrl(params: { challenge: string; state: string }): string {
 }
 ```
 
-**Required Scopes:**
+**必要なスコープ：**
 ```typescript
 const SCOPES = [
   "https://www.googleapis.com/auth/cloud-platform",
@@ -82,20 +84,20 @@ const SCOPES = [
 ];
 ```
 
-#### Step 3: Handle OAuth Callback
+#### ステップ 3：OAuth コールバックの処理
 
-**Automatic Mode (Local Development):**
-- Start a local HTTP server on port 51121
-- Wait for the redirect from Google
-- Extract the authorization code from the query parameters
+**自動モード（ローカル開発）：**
+- ポート 51121 でローカル HTTP サーバーを起動
+- Google からのリダイレクトを待機
+- クエリパラメータから認可コードを抽出
 
-**Manual Mode (Remote/Headless):**
-- Display the authorization URL to the user
-- User completes authentication in their browser
-- User pastes the full redirect URL back into the terminal
-- Parse the code from the pasted URL
+**手動モード（リモート/ヘッドレス）：**
+- ユーザーに認可 URL を表示
+- ユーザーがブラウザで認証を完了
+- ユーザーが完全なリダイレクト URL をターミナルに貼り付け
+- 貼り付けられた URL からコードを解析
 
-#### Step 4: Exchange Code for Tokens
+#### ステップ 4：コードをトークンに交換
 ```typescript
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
@@ -126,9 +128,9 @@ async function exchangeCode(params: {
 }
 ```
 
-#### Step 5: Fetch Additional User Data
+#### ステップ 5：追加のユーザーデータの取得
 
-**User Email:**
+**ユーザーメール：**
 ```typescript
 async function fetchUserEmail(accessToken: string): Promise<string | undefined> {
   const response = await fetch(
@@ -140,7 +142,7 @@ async function fetchUserEmail(accessToken: string): Promise<string | undefined> 
 }
 ```
 
-**Project ID (Required for API calls):**
+**プロジェクト ID（API 呼び出しに必須）：**
 ```typescript
 async function fetchProjectId(accessToken: string): Promise<string> {
   const headers = {
@@ -171,17 +173,17 @@ async function fetchProjectId(accessToken: string): Promise<string> {
   );
 
   const data = await response.json();
-  return data.cloudaicompanionProject || "rising-fact-p41fc"; // Default fallback
+  return data.cloudaicompanionProject || "rising-fact-p41fc"; // デフォルトのフォールバック
 }
 ```
 
 ---
 
-## OAuth Implementation Details
+## OAuth 実装の詳細
 
-### Client Credentials
+### クライアント認証情報
 
-**Important:** These are base64-encoded in the source code for sync with pi-ai:
+**重要：** これらは pi-ai との同期のためにソースコード内で base64 エンコードされています：
 
 ```typescript
 const decode = (s: string) => Buffer.from(s, "base64").toString();
@@ -192,17 +194,17 @@ const CLIENT_ID = decode(
 const CLIENT_SECRET = decode("R09DU1BYLUs1OEZXUjQ4NkxkTEoxbUxCOHNYQzR6NnFEQWY=");
 ```
 
-### OAuth Flow Modes
+### OAuth フローモード
 
-1. **Automatic Flow** (Local machines with browser):
-   - Opens browser automatically
-   - Local callback server captures redirect
-   - No user interaction required after initial auth
+1. **自動フロー**（ブラウザのあるローカルマシン）：
+   - ブラウザを自動的に開く
+   - ローカルコールバックサーバーがリダイレクトをキャプチャ
+   - 初回認証後はユーザー操作不要
 
-2. **Manual Flow** (Remote/headless/WSL2):
-   - URL displayed for manual copy-paste
-   - User completes auth in external browser
-   - User pastes full redirect URL back
+2. **手動フロー**（リモート/ヘッドレス/WSL2）：
+   - 手動コピー＆ペースト用の URL を表示
+   - ユーザーが外部ブラウザで認証を完了
+   - ユーザーが完全なリダイレクト URL を貼り付け
 
 ```typescript
 function shouldUseManualOAuthFlow(isRemote: boolean): boolean {
@@ -212,31 +214,31 @@ function shouldUseManualOAuthFlow(isRemote: boolean): boolean {
 
 ---
 
-## Token Management
+## トークン管理
 
-### Auth Profile Structure
+### 認証プロファイル構造
 
 ```typescript
 type OAuthCredential = {
   type: "oauth";
   provider: "google-antigravity";
-  access: string;           // Access token
-  refresh: string;          // Refresh token
-  expires: number;          // Expiration timestamp (ms since epoch)
-  email?: string;           // User email
-  projectId?: string;       // Google Cloud project ID
+  access: string;           // アクセストークン
+  refresh: string;          // リフレッシュトークン
+  expires: number;          // 有効期限タイムスタンプ（エポックからのミリ秒）
+  email?: string;           // ユーザーメール
+  projectId?: string;       // Google Cloud プロジェクト ID
 };
 ```
 
-### Token Refresh
+### トークンの更新
 
-The credential includes a refresh token that can be used to obtain new access tokens when the current one expires. The expiration is set with a 5-minute buffer to prevent race conditions.
+認証情報にはリフレッシュトークンが含まれており、現在のアクセストークンが期限切れになった際に新しいアクセストークンを取得するために使用できます。有効期限は競合状態を防ぐために 5 分のバッファを設けています。
 
 ---
 
-## Models List Fetching
+## モデルリストの取得
 
-### Fetch Available Models
+### 利用可能なモデルの取得
 
 ```typescript
 const BASE_URL = "https://cloudcode-pa.googleapis.com";
@@ -263,7 +265,7 @@ async function fetchAvailableModels(
 
   const data = await response.json();
   
-  // Returns models with quota information
+  // クォータ情報付きのモデルを返す
   return Object.entries(data.models).map(([modelId, modelInfo]) => ({
     id: modelId,
     displayName: modelInfo.displayName,
@@ -276,7 +278,7 @@ async function fetchAvailableModels(
 }
 ```
 
-### Response Format
+### レスポンス形式
 
 ```typescript
 type FetchAvailableModelsResponse = {
@@ -284,7 +286,7 @@ type FetchAvailableModelsResponse = {
     displayName?: string;
     quotaInfo?: {
       remainingFraction?: number | string;
-      resetTime?: string;      // ISO 8601 timestamp
+      resetTime?: string;      // ISO 8601 タイムスタンプ
       isExhausted?: boolean;
     };
   }>;
@@ -293,16 +295,16 @@ type FetchAvailableModelsResponse = {
 
 ---
 
-## Usage Tracking
+## 使用量トラッキング
 
-### Fetch Usage Data
+### 使用量データの取得
 
 ```typescript
 export async function fetchAntigravityUsage(
   token: string,
   timeoutMs: number
 ): Promise<ProviderUsageSnapshot> {
-  // 1. Fetch credits and plan info
+  // 1. クレジットとプラン情報を取得
   const loadCodeAssistRes = await fetch(
     `${BASE_URL}/v1internal:loadCodeAssist`,
     {
@@ -321,10 +323,10 @@ export async function fetchAntigravityUsage(
     }
   );
 
-  // Extract credits info
+  // クレジット情報を抽出
   const { availablePromptCredits, planInfo, currentTier } = data;
   
-  // 2. Fetch model quotas
+  // 2. モデルクォータを取得
   const modelsRes = await fetch(
     `${BASE_URL}/v1internal:fetchAvailableModels`,
     {
@@ -334,20 +336,20 @@ export async function fetchAntigravityUsage(
     }
   );
 
-  // Build usage windows
+  // 使用量ウィンドウを構築
   return {
     provider: "google-antigravity",
     displayName: "Google Antigravity",
     windows: [
       { label: "Credits", usedPercent: calculateUsedPercent(available, monthly) },
-      // Individual model quotas...
+      // 個別モデルクォータ...
     ],
     plan: currentTier?.name || planType,
   };
 }
 ```
 
-### Usage Response Structure
+### 使用量レスポンス構造
 
 ```typescript
 type ProviderUsageSnapshot = {
@@ -359,17 +361,17 @@ type ProviderUsageSnapshot = {
 };
 
 type UsageWindow = {
-  label: string;           // "Credits" or model ID
+  label: string;           // "Credits" またはモデル ID
   usedPercent: number;     // 0-100
-  resetAt?: number;        // Timestamp when quota resets
+  resetAt?: number;        // クォータがリセットされるタイムスタンプ
 };
 ```
 
 ---
 
-## Provider Plugin Structure
+## プロバイダープラグイン構造
 
-### Plugin Definition
+### プラグイン定義
 
 ```typescript
 const antigravityPlugin = {
@@ -392,7 +394,7 @@ const antigravityPlugin = {
           hint: "PKCE + localhost callback",
           kind: "oauth",
           run: async (ctx: ProviderAuthContext) => {
-            // OAuth implementation here
+            // OAuth 実装はここに記述
           },
         },
       ],
@@ -408,10 +410,10 @@ type ProviderAuthContext = {
   config: PicoClawConfig;
   agentDir?: string;
   workspaceDir?: string;
-  prompter: WizardPrompter;      // UI prompts/notifications
-  runtime: RuntimeEnv;           // Logging, etc.
-  isRemote: boolean;             // Whether running remotely
-  openUrl: (url: string) => Promise<void>;  // Browser opener
+  prompter: WizardPrompter;      // UI プロンプト/通知
+  runtime: RuntimeEnv;           // ログなど
+  isRemote: boolean;             // リモート実行かどうか
+  openUrl: (url: string) => Promise<void>;  // ブラウザオープナー
   oauth: {
     createVpsAwareHandlers: Function;
   };
@@ -434,35 +436,35 @@ type ProviderAuthResult = {
 
 ---
 
-## Integration Requirements
+## 統合要件
 
-### 1. Required Environment/Dependencies
+### 1. 必要な環境/依存関係
 
 - Go ≥ 1.25
-- PicoClaw codebase (`pkg/providers/` and `pkg/auth/`)
-- `crypto` and `net/http` standard library packages
+- PicoClaw コードベース（`pkg/providers/` および `pkg/auth/`）
+- `crypto` および `net/http` 標準ライブラリパッケージ
 
-### 2. Required Headers for API Calls
+### 2. API 呼び出しに必要なヘッダー
 
 ```typescript
 const REQUIRED_HEADERS = {
   "Authorization": `Bearer ${accessToken}`,
   "Content-Type": "application/json",
-  "User-Agent": "antigravity",  // or "google-api-nodejs-client/9.15.1"
+  "User-Agent": "antigravity",  // または "google-api-nodejs-client/9.15.1"
   "X-Goog-Api-Client": "google-cloud-sdk vscode_cloudshelleditor/0.1",
 };
 
-// For loadCodeAssist calls, also include:
+// loadCodeAssist 呼び出しには以下も含める：
 const CLIENT_METADATA = {
-  ideType: "ANTIGRAVITY",  // or "IDE_UNSPECIFIED"
+  ideType: "ANTIGRAVITY",  // または "IDE_UNSPECIFIED"
   platform: "PLATFORM_UNSPECIFIED",
   pluginType: "GEMINI",
 };
 ```
 
-### 3. Model Schema Sanitization
+### 3. モデルスキーマのサニタイズ
 
-Antigravity uses Gemini-compatible models, so tool schemas must be sanitized:
+Antigravity は Gemini 互換モデルを使用するため、ツールスキーマのサニタイズが必要です：
 
 ```typescript
 const GOOGLE_SCHEMA_UNSUPPORTED_KEYWORDS = new Set([
@@ -488,17 +490,17 @@ const GOOGLE_SCHEMA_UNSUPPORTED_KEYWORDS = new Set([
   "maxProperties",
 ]);
 
-// Clean schema before sending
+// 送信前にスキーマをクリーンアップ
 function cleanToolSchemaForGemini(schema: Record<string, unknown>): unknown {
-  // Remove unsupported keywords
-  // Ensure top-level has type: "object"
-  // Flatten anyOf/oneOf unions
+  // サポートされていないキーワードを削除
+  // トップレベルに type: "object" があることを確認
+  // anyOf/oneOf ユニオンをフラット化
 }
 ```
 
-### 4. Thinking Block Handling (Claude Models)
+### 4. 思考ブロックの処理（Claude モデル）
 
-For Antigravity Claude models, thinking blocks require special handling:
+Antigravity の Claude モデルでは、思考ブロックに特別な処理が必要です：
 
 ```typescript
 const ANTIGRAVITY_SIGNATURE_RE = /^[A-Za-z0-9+/]+={0,2}$/;
@@ -506,34 +508,34 @@ const ANTIGRAVITY_SIGNATURE_RE = /^[A-Za-z0-9+/]+={0,2}$/;
 export function sanitizeAntigravityThinkingBlocks(
   messages: AgentMessage[]
 ): AgentMessage[] {
-  // Validate thinking signatures
-  // Normalize signature fields
-  // Discard unsigned thinking blocks
+  // 思考シグネチャを検証
+  // シグネチャフィールドを正規化
+  // 署名されていない思考ブロックを破棄
 }
 ```
 
 ---
 
-## API Endpoints
+## API エンドポイント
 
-### Authentication Endpoints
+### 認証エンドポイント
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `https://accounts.google.com/o/oauth2/v2/auth` | GET | OAuth authorization |
-| `https://oauth2.googleapis.com/token` | POST | Token exchange |
-| `https://www.googleapis.com/oauth2/v1/userinfo` | GET | User info (email) |
+| エンドポイント | メソッド | 用途 |
+|---------------|---------|------|
+| `https://accounts.google.com/o/oauth2/v2/auth` | GET | OAuth 認可 |
+| `https://oauth2.googleapis.com/token` | POST | トークン交換 |
+| `https://www.googleapis.com/oauth2/v1/userinfo` | GET | ユーザー情報（メール） |
 
-### Cloud Code Assist Endpoints
+### Cloud Code Assist エンドポイント
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist` | POST | Load project info, credits, plan |
-| `https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | POST | List available models with quotas |
-| `https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse` | POST | Chat streaming endpoint |
+| エンドポイント | メソッド | 用途 |
+|---------------|---------|------|
+| `https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist` | POST | プロジェクト情報、クレジット、プランの読み込み |
+| `https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | POST | クォータ付き利用可能モデルの一覧 |
+| `https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse` | POST | チャットストリーミングエンドポイント |
 
-**API Request Format (Chat):**
-The `v1internal:streamGenerateContent` endpoint expects an envelope wrapping the standard Gemini request:
+**API リクエスト形式（チャット）：**
+`v1internal:streamGenerateContent` エンドポイントは、標準の Gemini リクエストをラップするエンベロープ形式を期待します：
 
 ```json
 {
@@ -551,8 +553,8 @@ The `v1internal:streamGenerateContent` endpoint expects an envelope wrapping the
 }
 ```
 
-**API Response Format (SSE):**
-Each SSE message (`data: {...}`) is wrapped in a `response` field:
+**API レスポンス形式（SSE）：**
+各 SSE メッセージ（`data: {...}`）は `response` フィールドでラップされます：
 
 ```json
 {
@@ -569,9 +571,9 @@ Each SSE message (`data: {...}`) is wrapped in a `response` field:
 
 ---
 
-## Configuration
+## 設定
 
-### config.json Configuration
+### config.json の設定
 
 ```json
 {
@@ -590,9 +592,9 @@ Each SSE message (`data: {...}`) is wrapped in a `response` field:
 }
 ```
 
-### Auth Profile Storage
+### 認証プロファイルの保存
 
-Auth profiles are stored in `~/.picoclaw/auth.json`:
+認証プロファイルは `~/.picoclaw/auth.json` に保存されます：
 
 ```json
 {
@@ -612,24 +614,24 @@ Auth profiles are stored in `~/.picoclaw/auth.json`:
 
 ---
 
-## Creating a New Provider in PicoClaw
+## PicoClaw での新しいプロバイダーの作成
 
-PicoClaw providers are implemented as Go packages under `pkg/providers/`. To add a new provider:
+PicoClaw のプロバイダーは `pkg/providers/` 配下の Go パッケージとして実装されます。新しいプロバイダーを追加するには：
 
-### Step-by-Step Implementation
+### ステップバイステップの実装
 
-#### 1. Create Provider File
+#### 1. プロバイダーファイルの作成
 
-Create a new Go file in `pkg/providers/`:
+`pkg/providers/` に新しい Go ファイルを作成します：
 
 ```
 pkg/providers/
 └── your_provider.go
 ```
 
-#### 2. Implement the Provider Interface
+#### 2. Provider インターフェースの実装
 
-Your provider must implement the `Provider` interface defined in `pkg/providers/types.go`:
+プロバイダーは `pkg/providers/types.go` で定義された `Provider` インターフェースを実装する必要があります：
 
 ```go
 package providers
@@ -647,22 +649,22 @@ func NewYourProvider(apiKey, apiBase, proxy string) *YourProvider {
 }
 
 func (p *YourProvider) Chat(ctx context.Context, messages []Message, tools []Tool, cb StreamCallback) error {
-    // Implement chat completion with streaming
+    // ストリーミング付きチャット補完を実装
 }
 ```
 
-#### 3. Register in the Factory
+#### 3. ファクトリーへの登録
 
-Add your provider to the protocol switch in `pkg/providers/factory.go`:
+`pkg/providers/factory.go` のプロトコルスイッチにプロバイダーを追加します：
 
 ```go
 case "your-provider":
     return NewYourProvider(sel.apiKey, sel.apiBase, sel.proxy), nil
 ```
 
-#### 4. Add Default Config (Optional)
+#### 4. デフォルト設定の追加（オプション）
 
-Add a default entry in `pkg/config/defaults.go`:
+`pkg/config/defaults.go` にデフォルトエントリを追加します：
 
 ```go
 {
@@ -672,16 +674,16 @@ Add a default entry in `pkg/config/defaults.go`:
 },
 ```
 
-#### 5. Add Auth Support (Optional)
+#### 5. 認証サポートの追加（オプション）
 
-If your provider requires OAuth or special authentication, add a case to `cmd/picoclaw/internal/auth/helpers.go`:
+プロバイダーが OAuth や特別な認証を必要とする場合、`cmd/picoclaw/internal/auth/helpers.go` にケースを追加します：
 
 ```go
 case "your-provider":
     authLoginYourProvider()
 ```
 
-#### 6. Configure via `config.json`
+#### 6. `config.json` での設定
 
 ```json
 {
@@ -698,71 +700,71 @@ case "your-provider":
 
 ---
 
-## Testing Your Implementation
+## 実装のテスト
 
-### CLI Commands
+### CLI コマンド
 
 ```bash
-# Authenticate with a provider
+# プロバイダーで認証
 picoclaw auth login --provider your-provider
 
-# List models (for Antigravity)
+# モデルの一覧表示（Antigravity 用）
 picoclaw auth models
 
-# Start the gateway
+# ゲートウェイの起動
 picoclaw gateway
 
-# Run an agent with a specific model
+# 特定のモデルでエージェントを実行
 picoclaw agent -m "Hello" --model your-model
 ```
 
-### Environment Variables for Testing
+### テスト用環境変数
 
 ```bash
-# Override default model
+# デフォルトモデルの上書き
 export PICOCLAW_AGENTS_DEFAULTS_MODEL=your-model
 
-# Override provider settings
+# プロバイダー設定の上書き
 export PICOCLAW_MODEL_LIST='[{"model_name":"your-model","model":"your-provider/model-name","api_key":"..."}]'
 ```
 
 ---
 
-## References
+## 参考資料
 
-- **Source Files:**
-  - `pkg/providers/antigravity_provider.go` - Antigravity provider implementation
-  - `pkg/auth/oauth.go` - OAuth flow implementation
-  - `pkg/auth/store.go` - Auth credential storage (`~/.picoclaw/auth.json`)
-  - `pkg/providers/factory.go` - Provider factory and protocol routing
-  - `pkg/providers/types.go` - Provider interface definitions
-  - `cmd/picoclaw/internal/auth/helpers.go` - Auth CLI commands
+- **ソースファイル：**
+  - `pkg/providers/antigravity_provider.go` - Antigravity プロバイダー実装
+  - `pkg/auth/oauth.go` - OAuth フロー実装
+  - `pkg/auth/store.go` - 認証情報ストレージ（`~/.picoclaw/auth.json`）
+  - `pkg/providers/factory.go` - プロバイダーファクトリーとプロトコルルーティング
+  - `pkg/providers/types.go` - プロバイダーインターフェース定義
+  - `cmd/picoclaw/internal/auth/helpers.go` - 認証 CLI コマンド
 
-- **Documentation:**
-  - `docs/ANTIGRAVITY_USAGE.md` - Antigravity usage guide
-  - `docs/migration/model-list-migration.md` - Migration guide
-
----
-
-## Notes
-
-1. **Google Cloud Project:** Antigravity requires Gemini for Google Cloud to be enabled on your Google Cloud project
-2. **Quotas:** Uses Google Cloud project quotas (not separate billing)
-3. **Model Access:** Available models depend on your Google Cloud project configuration
-4. **Thinking Blocks:** Claude models via Antigravity require special handling of thinking blocks with signatures
-5. **Schema Sanitization:** Tool schemas must be sanitized to remove unsupported JSON Schema keywords
+- **ドキュメント：**
+  - `docs/ANTIGRAVITY_USAGE.md` - Antigravity 使用ガイド
+  - `docs/migration/model-list-migration.md` - 移行ガイド
 
 ---
 
+## 注意事項
+
+1. **Google Cloud プロジェクト：** Antigravity は Google Cloud プロジェクトで Gemini for Google Cloud が有効になっている必要があります
+2. **クォータ：** Google Cloud プロジェクトのクォータを使用します（個別の課金ではありません）
+3. **モデルアクセス：** 利用可能なモデルは Google Cloud プロジェクトの設定に依存します
+4. **思考ブロック：** Antigravity 経由の Claude モデルは、署名付き思考ブロックの特別な処理が必要です
+5. **スキーマサニタイズ：** ツールスキーマはサポートされていない JSON Schema キーワードを削除するためにサニタイズが必要です
+
 ---
 
-## Common Error Handling
+---
 
-### 1. Rate Limiting (HTTP 429)
+## 一般的なエラー処理
 
-Antigravity returns a 429 error when project/model quotas are exhausted. The error response often contains a `quotaResetDelay` in the `details` field.
+### 1. レート制限（HTTP 429）
 
-**Example 429 Error:**
+プロジェクト/モデルのクォータが枯渇すると、Antigravity は 429 エラーを返します。エラーレスポンスには通常、`details` フィールドに `quotaResetDelay` が含まれます。
+
+**429 エラーの例：**
 ```json
 {
   "error": {
@@ -781,27 +783,27 @@ Antigravity returns a 429 error when project/model quotas are exhausted. The err
 }
 ```
 
-### 2. Empty Responses (Restricted Models)
+### 2. 空のレスポンス（制限付きモデル）
 
-Some models might show up in the available models list but return an empty response (200 OK but empty SSE stream). This usually happens for preview or restricted models that the current project doesn't have permission to use.
+一部のモデルは利用可能モデルリストに表示されますが、空のレスポンスを返す場合があります（200 OK だが SSE ストリームが空）。これは通常、現在のプロジェクトに使用権限がないプレビュー版または制限付きモデルで発生します。
 
-**Treatment:** Treat empty responses as errors informing the user that the model might be restricted or invalid for their project.
+**対処法：** 空のレスポンスをエラーとして扱い、そのモデルがプロジェクトに対して制限されているか無効である可能性があることをユーザーに通知します。
 
 ---
 
-## Troubleshooting
+## トラブルシューティング
 
-### "Token expired"
-- Refresh OAuth tokens: `picoclaw auth login --provider antigravity`
+### "Token expired"（トークン期限切れ）
+- OAuth トークンを更新：`picoclaw auth login --provider antigravity`
 
-### "Gemini for Google Cloud is not enabled"
-- Enable the API in your Google Cloud Console
+### "Gemini for Google Cloud is not enabled"（Gemini for Google Cloud が有効になっていない）
+- Google Cloud Console で API を有効にしてください
 
-### "Project not found"
-- Ensure your Google Cloud project has the necessary APIs enabled
-- Check that the project ID is correctly fetched during authentication
+### "Project not found"（プロジェクトが見つからない）
+- Google Cloud プロジェクトで必要な API が有効になっていることを確認してください
+- 認証中にプロジェクト ID が正しく取得されているか確認してください
 
-### Models not appearing in list
-- Verify OAuth authentication completed successfully
-- Check auth profile storage: `~/.picoclaw/auth.json`
-- Re-run `picoclaw auth login --provider antigravity`
+### モデルがリストに表示されない
+- OAuth 認証が正常に完了したことを確認してください
+- 認証プロファイルストレージを確認：`~/.picoclaw/auth.json`
+- `picoclaw auth login --provider antigravity` を再実行してください

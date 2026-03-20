@@ -97,7 +97,7 @@
 1. 登录 [企业微信管理后台](https://work.weixin.qq.com/wework_admin)
 2. 进入"应用管理" → "智能机器人"，创建或选择一个 AI Bot
 3. 在 AI Bot 配置页面，填写"消息接收"信息：
-   - **URL**：`http://<your-server-ip>:18791/webhook/wecom-aibot`
+   - **URL**：`http://<your-server-ip>:18790/webhook/wecom-aibot`
    - **Token**：随机生成或自定义
    - **EncodingAESKey**：点击"随机生成"，得到 43 字符密钥
 4. 将 Token 和 EncodingAESKey 填入 PicoClaw 配置文件，启动服务后回到管理后台保存
@@ -158,6 +158,7 @@ PicoClaw 立即返回 {finish: false}（Agent 开始处理）
 - 确认服务器可以访问企业微信长连接接口
 
 ### 回调 URL 验证失败
+
 
 - 确认 `token` 与 `encoding_aes_key` 填写正确
 - 确认服务器防火墙已开放对应端口

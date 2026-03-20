@@ -1,31 +1,33 @@
-# Antigravity Authentication & Integration Guide
+> Quay lại [README](../../README.vi.md)
 
-## Overview
+# Hướng dẫn Xác thực và Tích hợp Antigravity
 
-**Antigravity** (Google Cloud Code Assist) is a Google-backed AI model provider that offers access to models like Claude Opus 4.6 and Gemini through Google's Cloud infrastructure. This document provides a complete guide on how authentication works, how to fetch models, and how to implement a new provider in PicoClaw.
+## Tổng quan
 
----
-
-## Table of Contents
-
-1. [Authentication Flow](#authentication-flow)
-2. [OAuth Implementation Details](#oauth-implementation-details)
-3. [Token Management](#token-management)
-4. [Models List Fetching](#models-list-fetching)
-5. [Usage Tracking](#usage-tracking)
-6. [Provider Plugin Structure](#provider-plugin-structure)
-7. [Integration Requirements](#integration-requirements)
-8. [API Endpoints](#api-endpoints)
-9. [Configuration](#configuration)
-10. [Creating a New Provider in PicoClaw](#creating-a-new-provider-in-picoclaw)
+**Antigravity** (Google Cloud Code Assist) là nhà cung cấp mô hình AI được Google hỗ trợ, cung cấp quyền truy cập vào các mô hình như Claude Opus 4.6 và Gemini thông qua hạ tầng đám mây của Google. Tài liệu này cung cấp hướng dẫn đầy đủ về cách xác thực hoạt động, cách lấy danh sách mô hình và cách triển khai nhà cung cấp mới trong PicoClaw.
 
 ---
 
-## Authentication Flow
+## Mục lục
 
-### 1. OAuth 2.0 with PKCE
+1. [Luồng xác thực](#luồng-xác-thực)
+2. [Chi tiết triển khai OAuth](#chi-tiết-triển-khai-oauth)
+3. [Quản lý token](#quản-lý-token)
+4. [Lấy danh sách mô hình](#lấy-danh-sách-mô-hình)
+5. [Theo dõi mức sử dụng](#theo-dõi-mức-sử-dụng)
+6. [Cấu trúc plugin nhà cung cấp](#cấu-trúc-plugin-nhà-cung-cấp)
+7. [Yêu cầu tích hợp](#yêu-cầu-tích-hợp)
+8. [Các endpoint API](#các-endpoint-api)
+9. [Cấu hình](#cấu-hình)
+10. [Tạo nhà cung cấp mới trong PicoClaw](#tạo-nhà-cung-cấp-mới-trong-picoclaw)
 
-Antigravity uses **OAuth 2.0 with PKCE (Proof Key for Code Exchange)** for secure authentication:
+---
+
+## Luồng xác thực
+
+### 1. OAuth 2.0 với PKCE
+
+Antigravity sử dụng **OAuth 2.0 với PKCE (Proof Key for Code Exchange)** để xác thực an toàn:
 
 ```
 ┌─────────────┐                                    ┌─────────────────┐
@@ -40,9 +42,9 @@ Antigravity uses **OAuth 2.0 with PKCE (Proof Key for Code Exchange)** for secur
 └─────────────┘                                    └─────────────────┘
 ```
 
-### 2. Detailed Steps
+### 2. Các bước chi tiết
 
-#### Step 1: Generate PKCE Parameters
+#### Bước 1: Tạo tham số PKCE
 ```typescript
 function generatePkce(): { verifier: string; challenge: string } {
   const verifier = randomBytes(32).toString("hex");
@@ -51,7 +53,7 @@ function generatePkce(): { verifier: string; challenge: string } {
 }
 ```
 
-#### Step 2: Build Authorization URL
+#### Bước 2: Xây dựng URL ủy quyền
 ```typescript
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const REDIRECT_URI = "http://localhost:51121/oauth-callback";
@@ -71,7 +73,7 @@ function buildAuthUrl(params: { challenge: string; state: string }): string {
 }
 ```
 
-**Required Scopes:**
+**Các phạm vi quyền cần thiết:**
 ```typescript
 const SCOPES = [
   "https://www.googleapis.com/auth/cloud-platform",
@@ -82,20 +84,20 @@ const SCOPES = [
 ];
 ```
 
-#### Step 3: Handle OAuth Callback
+#### Bước 3: Xử lý callback OAuth
 
-**Automatic Mode (Local Development):**
-- Start a local HTTP server on port 51121
-- Wait for the redirect from Google
-- Extract the authorization code from the query parameters
+**Chế độ tự động (Phát triển cục bộ):**
+- Khởi động máy chủ HTTP cục bộ trên cổng 51121
+- Chờ chuyển hướng từ Google
+- Trích xuất mã ủy quyền từ tham số truy vấn
 
-**Manual Mode (Remote/Headless):**
-- Display the authorization URL to the user
-- User completes authentication in their browser
-- User pastes the full redirect URL back into the terminal
-- Parse the code from the pasted URL
+**Chế độ thủ công (Từ xa/Không có giao diện):**
+- Hiển thị URL ủy quyền cho người dùng
+- Người dùng hoàn tất xác thực trong trình duyệt
+- Người dùng dán URL chuyển hướng đầy đủ vào terminal
+- Phân tích mã từ URL đã dán
 
-#### Step 4: Exchange Code for Tokens
+#### Bước 4: Đổi mã lấy token
 ```typescript
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 
@@ -126,9 +128,9 @@ async function exchangeCode(params: {
 }
 ```
 
-#### Step 5: Fetch Additional User Data
+#### Bước 5: Lấy dữ liệu người dùng bổ sung
 
-**User Email:**
+**Email người dùng:**
 ```typescript
 async function fetchUserEmail(accessToken: string): Promise<string | undefined> {
   const response = await fetch(
@@ -140,7 +142,7 @@ async function fetchUserEmail(accessToken: string): Promise<string | undefined> 
 }
 ```
 
-**Project ID (Required for API calls):**
+**ID dự án (Bắt buộc cho các lệnh gọi API):**
 ```typescript
 async function fetchProjectId(accessToken: string): Promise<string> {
   const headers = {
@@ -171,17 +173,17 @@ async function fetchProjectId(accessToken: string): Promise<string> {
   );
 
   const data = await response.json();
-  return data.cloudaicompanionProject || "rising-fact-p41fc"; // Default fallback
+  return data.cloudaicompanionProject || "rising-fact-p41fc"; // Giá trị mặc định dự phòng
 }
 ```
 
 ---
 
-## OAuth Implementation Details
+## Chi tiết triển khai OAuth
 
-### Client Credentials
+### Thông tin xác thực client
 
-**Important:** These are base64-encoded in the source code for sync with pi-ai:
+**Quan trọng:** Các giá trị này được mã hóa base64 trong mã nguồn để đồng bộ với pi-ai:
 
 ```typescript
 const decode = (s: string) => Buffer.from(s, "base64").toString();
@@ -192,17 +194,17 @@ const CLIENT_ID = decode(
 const CLIENT_SECRET = decode("R09DU1BYLUs1OEZXUjQ4NkxkTEoxbUxCOHNYQzR6NnFEQWY=");
 ```
 
-### OAuth Flow Modes
+### Các chế độ luồng OAuth
 
-1. **Automatic Flow** (Local machines with browser):
-   - Opens browser automatically
-   - Local callback server captures redirect
-   - No user interaction required after initial auth
+1. **Luồng tự động** (Máy cục bộ có trình duyệt):
+   - Tự động mở trình duyệt
+   - Máy chủ callback cục bộ bắt chuyển hướng
+   - Không cần tương tác người dùng sau xác thực ban đầu
 
-2. **Manual Flow** (Remote/headless/WSL2):
-   - URL displayed for manual copy-paste
-   - User completes auth in external browser
-   - User pastes full redirect URL back
+2. **Luồng thủ công** (Từ xa/Không có giao diện/WSL2):
+   - Hiển thị URL để sao chép-dán thủ công
+   - Người dùng hoàn tất xác thực trong trình duyệt bên ngoài
+   - Người dùng dán lại URL chuyển hướng đầy đủ
 
 ```typescript
 function shouldUseManualOAuthFlow(isRemote: boolean): boolean {
@@ -212,31 +214,31 @@ function shouldUseManualOAuthFlow(isRemote: boolean): boolean {
 
 ---
 
-## Token Management
+## Quản lý token
 
-### Auth Profile Structure
+### Cấu trúc hồ sơ xác thực
 
 ```typescript
 type OAuthCredential = {
   type: "oauth";
   provider: "google-antigravity";
-  access: string;           // Access token
-  refresh: string;          // Refresh token
-  expires: number;          // Expiration timestamp (ms since epoch)
-  email?: string;           // User email
-  projectId?: string;       // Google Cloud project ID
+  access: string;           // Token truy cập
+  refresh: string;          // Token làm mới
+  expires: number;          // Dấu thời gian hết hạn (ms kể từ epoch)
+  email?: string;           // Email người dùng
+  projectId?: string;       // ID dự án Google Cloud
 };
 ```
 
-### Token Refresh
+### Làm mới token
 
-The credential includes a refresh token that can be used to obtain new access tokens when the current one expires. The expiration is set with a 5-minute buffer to prevent race conditions.
+Thông tin xác thực bao gồm token làm mới có thể được sử dụng để lấy token truy cập mới khi token hiện tại hết hạn. Thời gian hết hạn được đặt với bộ đệm 5 phút để tránh điều kiện tranh chấp.
 
 ---
 
-## Models List Fetching
+## Lấy danh sách mô hình
 
-### Fetch Available Models
+### Lấy các mô hình khả dụng
 
 ```typescript
 const BASE_URL = "https://cloudcode-pa.googleapis.com";
@@ -263,7 +265,7 @@ async function fetchAvailableModels(
 
   const data = await response.json();
   
-  // Returns models with quota information
+  // Trả về các mô hình kèm thông tin hạn mức
   return Object.entries(data.models).map(([modelId, modelInfo]) => ({
     id: modelId,
     displayName: modelInfo.displayName,
@@ -276,7 +278,7 @@ async function fetchAvailableModels(
 }
 ```
 
-### Response Format
+### Định dạng phản hồi
 
 ```typescript
 type FetchAvailableModelsResponse = {
@@ -284,7 +286,7 @@ type FetchAvailableModelsResponse = {
     displayName?: string;
     quotaInfo?: {
       remainingFraction?: number | string;
-      resetTime?: string;      // ISO 8601 timestamp
+      resetTime?: string;      // Dấu thời gian ISO 8601
       isExhausted?: boolean;
     };
   }>;
@@ -293,16 +295,16 @@ type FetchAvailableModelsResponse = {
 
 ---
 
-## Usage Tracking
+## Theo dõi mức sử dụng
 
-### Fetch Usage Data
+### Lấy dữ liệu sử dụng
 
 ```typescript
 export async function fetchAntigravityUsage(
   token: string,
   timeoutMs: number
 ): Promise<ProviderUsageSnapshot> {
-  // 1. Fetch credits and plan info
+  // 1. Lấy thông tin tín dụng và gói dịch vụ
   const loadCodeAssistRes = await fetch(
     `${BASE_URL}/v1internal:loadCodeAssist`,
     {
@@ -321,10 +323,10 @@ export async function fetchAntigravityUsage(
     }
   );
 
-  // Extract credits info
+  // Trích xuất thông tin tín dụng
   const { availablePromptCredits, planInfo, currentTier } = data;
   
-  // 2. Fetch model quotas
+  // 2. Lấy hạn mức mô hình
   const modelsRes = await fetch(
     `${BASE_URL}/v1internal:fetchAvailableModels`,
     {
@@ -334,20 +336,20 @@ export async function fetchAntigravityUsage(
     }
   );
 
-  // Build usage windows
+  // Xây dựng cửa sổ sử dụng
   return {
     provider: "google-antigravity",
     displayName: "Google Antigravity",
     windows: [
       { label: "Credits", usedPercent: calculateUsedPercent(available, monthly) },
-      // Individual model quotas...
+      // Hạn mức từng mô hình...
     ],
     plan: currentTier?.name || planType,
   };
 }
 ```
 
-### Usage Response Structure
+### Cấu trúc phản hồi sử dụng
 
 ```typescript
 type ProviderUsageSnapshot = {
@@ -359,17 +361,17 @@ type ProviderUsageSnapshot = {
 };
 
 type UsageWindow = {
-  label: string;           // "Credits" or model ID
+  label: string;           // "Credits" hoặc ID mô hình
   usedPercent: number;     // 0-100
-  resetAt?: number;        // Timestamp when quota resets
+  resetAt?: number;        // Dấu thời gian khi hạn mức được đặt lại
 };
 ```
 
 ---
 
-## Provider Plugin Structure
+## Cấu trúc plugin nhà cung cấp
 
-### Plugin Definition
+### Định nghĩa plugin
 
 ```typescript
 const antigravityPlugin = {
@@ -392,7 +394,7 @@ const antigravityPlugin = {
           hint: "PKCE + localhost callback",
           kind: "oauth",
           run: async (ctx: ProviderAuthContext) => {
-            // OAuth implementation here
+            // Triển khai OAuth tại đây
           },
         },
       ],
@@ -408,10 +410,10 @@ type ProviderAuthContext = {
   config: PicoClawConfig;
   agentDir?: string;
   workspaceDir?: string;
-  prompter: WizardPrompter;      // UI prompts/notifications
-  runtime: RuntimeEnv;           // Logging, etc.
-  isRemote: boolean;             // Whether running remotely
-  openUrl: (url: string) => Promise<void>;  // Browser opener
+  prompter: WizardPrompter;      // Lời nhắc/thông báo UI
+  runtime: RuntimeEnv;           // Ghi log, v.v.
+  isRemote: boolean;             // Có đang chạy từ xa không
+  openUrl: (url: string) => Promise<void>;  // Mở trình duyệt
   oauth: {
     createVpsAwareHandlers: Function;
   };
@@ -434,35 +436,35 @@ type ProviderAuthResult = {
 
 ---
 
-## Integration Requirements
+## Yêu cầu tích hợp
 
-### 1. Required Environment/Dependencies
+### 1. Môi trường/Phụ thuộc cần thiết
 
 - Go ≥ 1.25
-- PicoClaw codebase (`pkg/providers/` and `pkg/auth/`)
-- `crypto` and `net/http` standard library packages
+- Mã nguồn PicoClaw (`pkg/providers/` và `pkg/auth/`)
+- Các gói thư viện chuẩn `crypto` và `net/http`
 
-### 2. Required Headers for API Calls
+### 2. Các header bắt buộc cho lệnh gọi API
 
 ```typescript
 const REQUIRED_HEADERS = {
   "Authorization": `Bearer ${accessToken}`,
   "Content-Type": "application/json",
-  "User-Agent": "antigravity",  // or "google-api-nodejs-client/9.15.1"
+  "User-Agent": "antigravity",  // hoặc "google-api-nodejs-client/9.15.1"
   "X-Goog-Api-Client": "google-cloud-sdk vscode_cloudshelleditor/0.1",
 };
 
-// For loadCodeAssist calls, also include:
+// Đối với các lệnh gọi loadCodeAssist, cũng bao gồm:
 const CLIENT_METADATA = {
-  ideType: "ANTIGRAVITY",  // or "IDE_UNSPECIFIED"
+  ideType: "ANTIGRAVITY",  // hoặc "IDE_UNSPECIFIED"
   platform: "PLATFORM_UNSPECIFIED",
   pluginType: "GEMINI",
 };
 ```
 
-### 3. Model Schema Sanitization
+### 3. Làm sạch schema mô hình
 
-Antigravity uses Gemini-compatible models, so tool schemas must be sanitized:
+Antigravity sử dụng các mô hình tương thích Gemini, vì vậy schema công cụ phải được làm sạch:
 
 ```typescript
 const GOOGLE_SCHEMA_UNSUPPORTED_KEYWORDS = new Set([
@@ -488,17 +490,17 @@ const GOOGLE_SCHEMA_UNSUPPORTED_KEYWORDS = new Set([
   "maxProperties",
 ]);
 
-// Clean schema before sending
+// Làm sạch schema trước khi gửi
 function cleanToolSchemaForGemini(schema: Record<string, unknown>): unknown {
-  // Remove unsupported keywords
-  // Ensure top-level has type: "object"
-  // Flatten anyOf/oneOf unions
+  // Xóa các từ khóa không được hỗ trợ
+  // Đảm bảo cấp cao nhất có type: "object"
+  // Làm phẳng các union anyOf/oneOf
 }
 ```
 
-### 4. Thinking Block Handling (Claude Models)
+### 4. Xử lý khối suy nghĩ (Mô hình Claude)
 
-For Antigravity Claude models, thinking blocks require special handling:
+Đối với các mô hình Claude qua Antigravity, khối suy nghĩ cần xử lý đặc biệt:
 
 ```typescript
 const ANTIGRAVITY_SIGNATURE_RE = /^[A-Za-z0-9+/]+={0,2}$/;
@@ -506,34 +508,34 @@ const ANTIGRAVITY_SIGNATURE_RE = /^[A-Za-z0-9+/]+={0,2}$/;
 export function sanitizeAntigravityThinkingBlocks(
   messages: AgentMessage[]
 ): AgentMessage[] {
-  // Validate thinking signatures
-  // Normalize signature fields
-  // Discard unsigned thinking blocks
+  // Xác thực chữ ký suy nghĩ
+  // Chuẩn hóa các trường chữ ký
+  // Loại bỏ các khối suy nghĩ chưa ký
 }
 ```
 
 ---
 
-## API Endpoints
+## Các endpoint API
 
-### Authentication Endpoints
+### Endpoint xác thực
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `https://accounts.google.com/o/oauth2/v2/auth` | GET | OAuth authorization |
-| `https://oauth2.googleapis.com/token` | POST | Token exchange |
-| `https://www.googleapis.com/oauth2/v1/userinfo` | GET | User info (email) |
+| Endpoint | Phương thức | Mục đích |
+|----------|------------|----------|
+| `https://accounts.google.com/o/oauth2/v2/auth` | GET | Ủy quyền OAuth |
+| `https://oauth2.googleapis.com/token` | POST | Trao đổi token |
+| `https://www.googleapis.com/oauth2/v1/userinfo` | GET | Thông tin người dùng (email) |
 
-### Cloud Code Assist Endpoints
+### Endpoint Cloud Code Assist
 
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist` | POST | Load project info, credits, plan |
-| `https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | POST | List available models with quotas |
-| `https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse` | POST | Chat streaming endpoint |
+| Endpoint | Phương thức | Mục đích |
+|----------|------------|----------|
+| `https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist` | POST | Tải thông tin dự án, tín dụng, gói dịch vụ |
+| `https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels` | POST | Liệt kê các mô hình khả dụng kèm hạn mức |
+| `https://cloudcode-pa.googleapis.com/v1internal:streamGenerateContent?alt=sse` | POST | Endpoint streaming chat |
 
-**API Request Format (Chat):**
-The `v1internal:streamGenerateContent` endpoint expects an envelope wrapping the standard Gemini request:
+**Định dạng yêu cầu API (Chat):**
+Endpoint `v1internal:streamGenerateContent` yêu cầu một envelope bao bọc yêu cầu Gemini tiêu chuẩn:
 
 ```json
 {
@@ -551,8 +553,8 @@ The `v1internal:streamGenerateContent` endpoint expects an envelope wrapping the
 }
 ```
 
-**API Response Format (SSE):**
-Each SSE message (`data: {...}`) is wrapped in a `response` field:
+**Định dạng phản hồi API (SSE):**
+Mỗi thông điệp SSE (`data: {...}`) được bao bọc trong trường `response`:
 
 ```json
 {
@@ -569,9 +571,9 @@ Each SSE message (`data: {...}`) is wrapped in a `response` field:
 
 ---
 
-## Configuration
+## Cấu hình
 
-### config.json Configuration
+### Cấu hình config.json
 
 ```json
 {
@@ -590,9 +592,9 @@ Each SSE message (`data: {...}`) is wrapped in a `response` field:
 }
 ```
 
-### Auth Profile Storage
+### Lưu trữ hồ sơ xác thực
 
-Auth profiles are stored in `~/.picoclaw/auth.json`:
+Hồ sơ xác thực được lưu trữ trong `~/.picoclaw/auth.json`:
 
 ```json
 {
@@ -612,24 +614,24 @@ Auth profiles are stored in `~/.picoclaw/auth.json`:
 
 ---
 
-## Creating a New Provider in PicoClaw
+## Tạo nhà cung cấp mới trong PicoClaw
 
-PicoClaw providers are implemented as Go packages under `pkg/providers/`. To add a new provider:
+Các nhà cung cấp PicoClaw được triển khai dưới dạng gói Go trong `pkg/providers/`. Để thêm nhà cung cấp mới:
 
-### Step-by-Step Implementation
+### Triển khai từng bước
 
-#### 1. Create Provider File
+#### 1. Tạo file nhà cung cấp
 
-Create a new Go file in `pkg/providers/`:
+Tạo file Go mới trong `pkg/providers/`:
 
 ```
 pkg/providers/
 └── your_provider.go
 ```
 
-#### 2. Implement the Provider Interface
+#### 2. Triển khai interface Provider
 
-Your provider must implement the `Provider` interface defined in `pkg/providers/types.go`:
+Nhà cung cấp của bạn phải triển khai interface `Provider` được định nghĩa trong `pkg/providers/types.go`:
 
 ```go
 package providers
@@ -647,22 +649,22 @@ func NewYourProvider(apiKey, apiBase, proxy string) *YourProvider {
 }
 
 func (p *YourProvider) Chat(ctx context.Context, messages []Message, tools []Tool, cb StreamCallback) error {
-    // Implement chat completion with streaming
+    // Triển khai hoàn thành chat với streaming
 }
 ```
 
-#### 3. Register in the Factory
+#### 3. Đăng ký trong factory
 
-Add your provider to the protocol switch in `pkg/providers/factory.go`:
+Thêm nhà cung cấp của bạn vào switch giao thức trong `pkg/providers/factory.go`:
 
 ```go
 case "your-provider":
     return NewYourProvider(sel.apiKey, sel.apiBase, sel.proxy), nil
 ```
 
-#### 4. Add Default Config (Optional)
+#### 4. Thêm cấu hình mặc định (Tùy chọn)
 
-Add a default entry in `pkg/config/defaults.go`:
+Thêm mục mặc định trong `pkg/config/defaults.go`:
 
 ```go
 {
@@ -672,16 +674,16 @@ Add a default entry in `pkg/config/defaults.go`:
 },
 ```
 
-#### 5. Add Auth Support (Optional)
+#### 5. Thêm hỗ trợ xác thực (Tùy chọn)
 
-If your provider requires OAuth or special authentication, add a case to `cmd/picoclaw/internal/auth/helpers.go`:
+Nếu nhà cung cấp của bạn yêu cầu OAuth hoặc xác thực đặc biệt, thêm case vào `cmd/picoclaw/internal/auth/helpers.go`:
 
 ```go
 case "your-provider":
     authLoginYourProvider()
 ```
 
-#### 6. Configure via `config.json`
+#### 6. Cấu hình qua `config.json`
 
 ```json
 {
@@ -698,71 +700,69 @@ case "your-provider":
 
 ---
 
-## Testing Your Implementation
+## Kiểm thử triển khai của bạn
 
-### CLI Commands
+### Lệnh CLI
 
 ```bash
-# Authenticate with a provider
+# Xác thực với nhà cung cấp
 picoclaw auth login --provider your-provider
 
-# List models (for Antigravity)
+# Liệt kê mô hình (cho Antigravity)
 picoclaw auth models
 
-# Start the gateway
+# Khởi động gateway
 picoclaw gateway
 
-# Run an agent with a specific model
+# Chạy agent với mô hình cụ thể
 picoclaw agent -m "Hello" --model your-model
 ```
 
-### Environment Variables for Testing
+### Biến môi trường cho kiểm thử
 
 ```bash
-# Override default model
+# Ghi đè mô hình mặc định
 export PICOCLAW_AGENTS_DEFAULTS_MODEL=your-model
 
-# Override provider settings
+# Ghi đè cài đặt nhà cung cấp
 export PICOCLAW_MODEL_LIST='[{"model_name":"your-model","model":"your-provider/model-name","api_key":"..."}]'
 ```
 
 ---
 
-## References
+## Tài liệu tham khảo
 
-- **Source Files:**
-  - `pkg/providers/antigravity_provider.go` - Antigravity provider implementation
-  - `pkg/auth/oauth.go` - OAuth flow implementation
-  - `pkg/auth/store.go` - Auth credential storage (`~/.picoclaw/auth.json`)
-  - `pkg/providers/factory.go` - Provider factory and protocol routing
-  - `pkg/providers/types.go` - Provider interface definitions
-  - `cmd/picoclaw/internal/auth/helpers.go` - Auth CLI commands
+- **File nguồn:**
+  - `pkg/providers/antigravity_provider.go` - Triển khai nhà cung cấp Antigravity
+  - `pkg/auth/oauth.go` - Triển khai luồng OAuth
+  - `pkg/auth/store.go` - Lưu trữ thông tin xác thực (`~/.picoclaw/auth.json`)
+  - `pkg/providers/factory.go` - Factory nhà cung cấp và định tuyến giao thức
+  - `pkg/providers/types.go` - Định nghĩa interface nhà cung cấp
+  - `cmd/picoclaw/internal/auth/helpers.go` - Lệnh CLI xác thực
 
-- **Documentation:**
-  - `docs/ANTIGRAVITY_USAGE.md` - Antigravity usage guide
-  - `docs/migration/model-list-migration.md` - Migration guide
-
----
-
-## Notes
-
-1. **Google Cloud Project:** Antigravity requires Gemini for Google Cloud to be enabled on your Google Cloud project
-2. **Quotas:** Uses Google Cloud project quotas (not separate billing)
-3. **Model Access:** Available models depend on your Google Cloud project configuration
-4. **Thinking Blocks:** Claude models via Antigravity require special handling of thinking blocks with signatures
-5. **Schema Sanitization:** Tool schemas must be sanitized to remove unsupported JSON Schema keywords
+- **Tài liệu:**
+  - `docs/ANTIGRAVITY_USAGE.md` - Hướng dẫn sử dụng Antigravity
+  - `docs/migration/model-list-migration.md` - Hướng dẫn di chuyển
 
 ---
 
+## Lưu ý
+
+1. **Dự án Google Cloud:** Antigravity yêu cầu Gemini for Google Cloud được bật trên dự án Google Cloud của bạn
+2. **Hạn mức:** Sử dụng hạn mức dự án Google Cloud (không tính phí riêng)
+3. **Truy cập mô hình:** Các mô hình khả dụng phụ thuộc vào cấu hình dự án Google Cloud của bạn
+4. **Khối suy nghĩ:** Mô hình Claude qua Antigravity yêu cầu xử lý đặc biệt khối suy nghĩ có chữ ký
+5. **Làm sạch schema:** Schema công cụ phải được làm sạch để loại bỏ các từ khóa JSON Schema không được hỗ trợ
+
 ---
 
-## Common Error Handling
+## Xử lý lỗi thường gặp
 
-### 1. Rate Limiting (HTTP 429)
+### 1. Giới hạn tốc độ (HTTP 429)
 
-Antigravity returns a 429 error when project/model quotas are exhausted. The error response often contains a `quotaResetDelay` in the `details` field.
+Antigravity trả về lỗi 429 khi hạn mức dự án/mô hình đã cạn kiệt. Phản hồi lỗi thường chứa `quotaResetDelay` trong trường `details`.
 
-**Example 429 Error:**
+**Ví dụ lỗi 429:**
 ```json
 {
   "error": {
@@ -781,27 +781,27 @@ Antigravity returns a 429 error when project/model quotas are exhausted. The err
 }
 ```
 
-### 2. Empty Responses (Restricted Models)
+### 2. Phản hồi trống (Mô hình bị hạn chế)
 
-Some models might show up in the available models list but return an empty response (200 OK but empty SSE stream). This usually happens for preview or restricted models that the current project doesn't have permission to use.
+Một số mô hình có thể xuất hiện trong danh sách mô hình khả dụng nhưng trả về phản hồi trống (200 OK nhưng luồng SSE trống). Điều này thường xảy ra với các mô hình xem trước hoặc bị hạn chế mà dự án hiện tại không có quyền sử dụng.
 
-**Treatment:** Treat empty responses as errors informing the user that the model might be restricted or invalid for their project.
+**Cách xử lý:** Coi phản hồi trống là lỗi, thông báo cho người dùng rằng mô hình có thể bị hạn chế hoặc không hợp lệ cho dự án của họ.
 
 ---
 
-## Troubleshooting
+## Khắc phục sự cố
 
-### "Token expired"
-- Refresh OAuth tokens: `picoclaw auth login --provider antigravity`
+### "Token expired" (Token đã hết hạn)
+- Làm mới token OAuth: `picoclaw auth login --provider antigravity`
 
-### "Gemini for Google Cloud is not enabled"
-- Enable the API in your Google Cloud Console
+### "Gemini for Google Cloud is not enabled" (Gemini for Google Cloud chưa được bật)
+- Bật API trong Google Cloud Console của bạn
 
-### "Project not found"
-- Ensure your Google Cloud project has the necessary APIs enabled
-- Check that the project ID is correctly fetched during authentication
+### "Project not found" (Không tìm thấy dự án)
+- Đảm bảo dự án Google Cloud của bạn đã bật các API cần thiết
+- Kiểm tra xem ID dự án có được lấy chính xác trong quá trình xác thực không
 
-### Models not appearing in list
-- Verify OAuth authentication completed successfully
-- Check auth profile storage: `~/.picoclaw/auth.json`
-- Re-run `picoclaw auth login --provider antigravity`
+### Mô hình không xuất hiện trong danh sách
+- Xác minh xác thực OAuth đã hoàn tất thành công
+- Kiểm tra lưu trữ hồ sơ xác thực: `~/.picoclaw/auth.json`
+- Chạy lại `picoclaw auth login --provider antigravity`

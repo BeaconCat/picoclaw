@@ -281,8 +281,8 @@ picoclaw gateway
       "enabled": true,
       "server": "irc.libera.chat:6697",
       "nick": "picoclaw-bot",
-      "use_tls": true,
-      "channels_to_join": ["#your-channel"],
+      "tls": true,
+      "channels": ["#your-channel"],
       "allow_from": []
     }
   }
@@ -496,7 +496,7 @@ picoclaw gateway
 **1. AI Bot を作成**
 
 * WeCom 管理コンソール → アプリ管理 → AI Bot
-* AI Bot 設定でコールバック URL を設定：`http://your-server:18791/webhook/wecom-aibot`
+* AI Bot 設定でコールバック URL を設定：`http://your-server:18790/webhook/wecom-aibot`
 * **Token** をコピーし、「ランダム生成」をクリックして **EncodingAESKey** を取得
 
 **2. 設定**

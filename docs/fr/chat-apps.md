@@ -261,7 +261,7 @@ picoclaw gateway
 picoclaw gateway
 ```
 
-Pour toutes les options (`device_id`, `join_on_invite`, `group_trigger`, `placeholder`, `reasoning_channel_id`), voir le [Guide de Configuration du Canal Matrix](docs/channels/matrix/README.md).
+Pour toutes les options (`device_id`, `join_on_invite`, `group_trigger`, `placeholder`, `reasoning_channel_id`), voir le [Guide de Configuration du Canal Matrix](channels/matrix/README.md).
 
 </details>
 
@@ -396,7 +396,7 @@ picoclaw gateway
 **1. Créer un AI Bot**
 
 * Allez dans la console d'administration WeCom → Gestion des applications → AI Bot
-* Dans les paramètres du AI Bot, configurez l'URL de callback : `http://your-server:18791/webhook/wecom-aibot`
+* Dans les paramètres du AI Bot, configurez l'URL de callback : `http://your-server:18790/webhook/wecom-aibot`
 * Copiez **Token** et cliquez sur "Générer aléatoirement" pour **EncodingAESKey**
 
 **2. Configurer**
@@ -511,7 +511,7 @@ picoclaw gateway
       "server": "irc.example.com:6697",
       "nick": "picoclaw-bot",
       "channel": "#your-channel",
-      "use_tls": true,
+      "tls": true,
       "allow_from": []
     }
   }

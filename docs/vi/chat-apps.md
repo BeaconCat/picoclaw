@@ -261,7 +261,7 @@ picoclaw gateway
 picoclaw gateway
 ```
 
-Để xem đầy đủ các tùy chọn (`device_id`, `join_on_invite`, `group_trigger`, `placeholder`, `reasoning_channel_id`), xem [Hướng Dẫn Cấu Hình Kênh Matrix](docs/channels/matrix/README.md).
+Để xem đầy đủ các tùy chọn (`device_id`, `join_on_invite`, `group_trigger`, `placeholder`, `reasoning_channel_id`), xem [Hướng Dẫn Cấu Hình Kênh Matrix](channels/matrix/README.md).
 
 </details>
 
@@ -396,7 +396,7 @@ picoclaw gateway
 **1. Tạo AI Bot**
 
 * Truy cập Console Quản Trị WeCom → Quản Lý App → AI Bot
-* Trong cài đặt AI Bot, cấu hình callback URL: `http://your-server:18791/webhook/wecom-aibot`
+* Trong cài đặt AI Bot, cấu hình callback URL: `http://your-server:18790/webhook/wecom-aibot`
 * Sao chép **Token** và nhấp "Tạo Ngẫu Nhiên" cho **EncodingAESKey**
 
 **2. Cấu hình**
