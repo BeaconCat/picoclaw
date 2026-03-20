@@ -207,12 +207,13 @@ picoclaw gateway
 <details>
 <summary><b>QQ</b></summary>
 
-**1. 创建 Bot**
+**快速设置（推荐）**
 
-- 前往 [QQ 开放平台](https://q.qq.com/#)
-- 创建应用 → 获取 **AppID** 和 **AppSecret**
+QQ 开放平台提供了一键创建 OpenClaw 兼容机器人的页面：
 
-**2. 配置**
+1. 打开 [QQ 机器人快速创建](https://q.qq.com/qqbot/openclaw/index.html)，扫码登录
+2. 机器人自动创建 — 复制 **App ID** 和 **App Secret**
+3. 配置 PicoClaw：
 
 ```json
 {
@@ -227,13 +228,20 @@ picoclaw gateway
 }
 ```
 
-> `allow_from` 留空表示允许所有用户，或指定 QQ 号限制访问。
+4. 运行 `picoclaw gateway`，打开 QQ 与机器人聊天
 
-**3. 运行**
+> App Secret 仅显示一次，请立即保存 — 再次查看将强制重置。
+>
+> 通过快速创建页面创建的机器人初始仅限创建者使用，不支持群聊。如需启用群聊访问，请在 [QQ 开放平台](https://q.qq.com/) 配置沙箱模式。
 
-```bash
-picoclaw gateway
-```
+**手动设置**
+
+如果你更喜欢手动创建机器人：
+
+* 登录 [QQ 开放平台](https://q.qq.com/) 注册成为开发者
+* 创建 QQ 机器人 — 自定义头像和名称
+* 从机器人设置中复制 **App ID** 和 **App Secret**
+* 按上述方式配置并运行 `picoclaw gateway`
 
 </details>
 
@@ -242,9 +250,10 @@ picoclaw gateway
 
 **1. 创建 Slack App**
 
-* 前往 [Slack API](https://api.slack.com/apps) 创建应用
-* 启用 **Socket Mode**
-* 获取 **Bot Token** 和 **App-Level Token**
+* 前往 [Slack API](https://api.slack.com/apps) 创建新应用
+* 在 **OAuth & Permissions** 中添加 Bot 权限范围：`chat:write`、`app_mentions:read`、`im:history`、`im:read`、`im:write`
+* 将应用安装到你的工作区
+* 复制 **Bot Token**（`xoxb-...`）和 **App-Level Token**（`xapp-...`，启用 Socket Mode 后获取）
 
 **2. 配置**
 
@@ -253,8 +262,8 @@ picoclaw gateway
   "channels": {
     "slack": {
       "enabled": true,
-      "bot_token": "xoxb-YOUR_BOT_TOKEN",
-      "app_token": "xapp-YOUR_APP_TOKEN",
+      "bot_token": "xoxb-YOUR-BOT-TOKEN",
+      "app_token": "xapp-YOUR-APP-TOKEN",
       "allow_from": []
     }
   }
@@ -280,20 +289,25 @@ picoclaw gateway
     "irc": {
       "enabled": true,
       "server": "irc.libera.chat:6697",
-      "nick": "picoclaw-bot",
       "tls": true,
+      "nick": "picoclaw-bot",
       "channels": ["#your-channel"],
+      "password": "",
       "allow_from": []
     }
   }
 }
 ```
 
+可选：`nickserv_password` 用于 NickServ 认证，`sasl_user`/`sasl_password` 用于 SASL 认证。
+
 **2. 运行**
 
 ```bash
 picoclaw gateway
 ```
+
+Bot 将连接到 IRC 服务器并加入指定的频道。
 
 </details>
 
@@ -382,11 +396,14 @@ picoclaw gateway
 <details>
 <summary><b>飞书 (Feishu)</b></summary>
 
+PicoClaw 通过 WebSocket/SDK 模式连接飞书 — 无需公网 Webhook URL 或回调服务器。
+
 **1. 创建应用**
 
-* 前往 [飞书开放平台](https://open.feishu.cn/)
-* 创建企业自建应用
-* 获取 **App ID** 和 **App Secret**
+* 前往 [飞书开放平台](https://open.feishu.cn/) 创建应用
+* 在应用设置中启用 **机器人** 能力
+* 创建版本并发布应用（应用必须发布后才能生效）
+* 复制 **App ID**（以 `cli_` 开头）和 **App Secret**
 
 **2. 配置**
 
@@ -396,20 +413,24 @@ picoclaw gateway
     "feishu": {
       "enabled": true,
       "app_id": "cli_xxx",
-      "app_secret": "xxx",
-      "encrypt_key": "",
-      "verification_token": "",
+      "app_secret": "YOUR_APP_SECRET",
       "allow_from": []
     }
   }
 }
 ```
 
-**3. 运行**
+可选：`encrypt_key` 和 `verification_token` 用于事件加密（生产环境推荐）。
+
+**3. 运行并聊天**
 
 ```bash
 picoclaw gateway
 ```
+
+打开飞书，搜索你的机器人名称即可开始聊天。也可以将机器人添加到群组 — 使用 `group_trigger.mention_only: true` 设置为仅在 @提及时回复。
+
+完整选项请参考 [飞书渠道配置指南](../channels/feishu/README.zh.md)。
 
 </details>
 
@@ -528,24 +549,36 @@ picoclaw gateway
 </details>
 
 <details>
-<summary><b>OneBot</b></summary>
+<summary><b>OneBot（通过 OneBot 协议连接 QQ）</b></summary>
 
-**1. 配置**
+OneBot 是 QQ 机器人的开放协议。PicoClaw 通过 WebSocket 连接任何 OneBot v11 兼容实现（如 [Lagrange](https://github.com/LagrangeDev/Lagrange.Core)、[NapCat](https://github.com/NapNeko/NapCatQQ)）。
 
-兼容 NapCat / Go-CQHTTP 等 OneBot 实现。
+**1. 设置 OneBot 实现**
+
+安装并运行 OneBot v11 兼容的 QQ 机器人框架，启用其 WebSocket 服务器。
+
+**2. 配置**
 
 ```json
 {
   "channels": {
     "onebot": {
       "enabled": true,
+      "ws_url": "ws://127.0.0.1:8080",
+      "access_token": "",
       "allow_from": []
     }
   }
 }
 ```
 
-**2. 运行**
+| 字段 | 说明 |
+|------|------|
+| `ws_url` | OneBot 实现的 WebSocket URL |
+| `access_token` | 认证用的访问令牌（如果在 OneBot 中配置了的话） |
+| `reconnect_interval` | 重连间隔（秒）（默认：5） |
+
+**3. 运行**
 
 ```bash
 picoclaw gateway

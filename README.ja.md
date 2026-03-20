@@ -162,11 +162,15 @@ PicoClaw はほぼすべての Linux デバイスにデプロイできます！
 
 ## 📦 インストール
 
-### コンパイル済みバイナリでインストール
+### picoclaw.io からダウンロード（推奨）
 
-[リリースページ](https://github.com/sipeed/picoclaw/releases) からお使いのプラットフォーム用のバイナリをダウンロードしてください。
+**[picoclaw.io](https://picoclaw.io)** にアクセス — 公式サイトがプラットフォームを自動検出し、ワンクリックでダウンロードできます。アーキテクチャを手動で選ぶ必要はありません。
 
-### ソースからインストール（最新機能、開発向け推奨）
+### プリコンパイル済みバイナリをダウンロード
+
+または、[GitHub Releases](https://github.com/sipeed/picoclaw/releases) ページからプラットフォームに合ったバイナリをダウンロードしてください。
+
+### ソースからビルド（開発用）
 
 ```bash
 git clone https://github.com/sipeed/picoclaw.git

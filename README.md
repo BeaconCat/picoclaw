@@ -162,11 +162,15 @@ PicoClaw can be deployed on almost any Linux device!
 
 ## 📦 Install
 
-### Install with precompiled binary
+### Download from picoclaw.io (Recommended)
 
-Download the binary for your platform from the [Releases](https://github.com/sipeed/picoclaw/releases) page.
+Visit **[picoclaw.io](https://picoclaw.io)** — the official website auto-detects your platform and provides one-click download. No need to manually pick an architecture.
 
-### Install from source (latest features, recommended for development)
+### Download precompiled binary
+
+Alternatively, download the binary for your platform from the [GitHub Releases](https://github.com/sipeed/picoclaw/releases) page.
+
+### Build from source (for development)
 
 ```bash
 git clone https://github.com/sipeed/picoclaw.git

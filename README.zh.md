@@ -161,11 +161,15 @@ PicoClaw 几乎可以部署在任何 Linux 设备上！
 
 ## 📦 安装
 
-### 使用预编译二进制文件安装
+### 从 picoclaw.io 下载（推荐）
 
-从 [Release 页面](https://github.com/sipeed/picoclaw/releases) 下载适用于您平台的二进制文件。
+访问 **[picoclaw.io](https://picoclaw.io)** — 官网自动检测你的平台，提供一键下载，无需手动选择架构。
 
-### 从源码安装（获取最新特性，开发推荐）
+### 下载预编译二进制文件
+
+也可以从 [GitHub Releases](https://github.com/sipeed/picoclaw/releases) 页面手动下载对应平台的二进制文件。
+
+### 从源码构建（开发用）
 
 ```bash
 git clone https://github.com/sipeed/picoclaw.git

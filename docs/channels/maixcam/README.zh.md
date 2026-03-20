@@ -1,3 +1,5 @@
+> 返回 [README](../../../README.zh.md)
+
 # MaixCam
 
 MaixCam 是专用于连接矽速科技 MaixCAM 与 MaixCAM2 AI 摄像设备的通道。它采用 TCP 套接字实现双向通信，支持边缘 AI 部署场景。

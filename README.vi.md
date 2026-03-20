@@ -162,11 +162,15 @@ PicoClaw có thể triển khai trên hầu hết mọi thiết bị Linux!
 
 ## 📦 Cài đặt
 
-### Cài đặt bằng binary biên dịch sẵn
+### Tải từ picoclaw.io (Khuyến nghị)
 
-Tải file binary cho nền tảng của bạn từ [trang Releases](https://github.com/sipeed/picoclaw/releases).
+Truy cập **[picoclaw.io](https://picoclaw.io)** — trang web chính thức tự động phát hiện nền tảng của bạn và cung cấp tải xuống một cú nhấp. Không cần chọn kiến trúc thủ công.
 
-### Cài đặt từ mã nguồn (có tính năng mới nhất, khuyên dùng cho phát triển)
+### Tải binary đã biên dịch sẵn
+
+Hoặc tải binary cho nền tảng của bạn từ trang [GitHub Releases](https://github.com/sipeed/picoclaw/releases).
+
+### Biên dịch từ mã nguồn (cho phát triển)
 
 ```bash
 git clone https://github.com/sipeed/picoclaw.git
