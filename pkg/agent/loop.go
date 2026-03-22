@@ -154,6 +154,10 @@ func registerSharedTools(
 				GLMSearchEngine:      cfg.Tools.Web.GLMSearch.SearchEngine,
 				GLMSearchMaxResults:  cfg.Tools.Web.GLMSearch.MaxResults,
 				GLMSearchEnabled:     cfg.Tools.Web.GLMSearch.Enabled,
+				BaiduSearchAPIKey:    cfg.Tools.Web.BaiduSearch.APIKey,
+				BaiduSearchBaseURL:   cfg.Tools.Web.BaiduSearch.BaseURL,
+				BaiduSearchMaxResults: cfg.Tools.Web.BaiduSearch.MaxResults,
+				BaiduSearchEnabled:   cfg.Tools.Web.BaiduSearch.Enabled,
 				Proxy:                cfg.Tools.Web.Proxy,
 			})
 			if err != nil {
