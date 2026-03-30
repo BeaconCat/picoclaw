@@ -38,12 +38,12 @@ PICOCLAW_HOME=/srv/picoclaw PICOCLAW_CONFIG=/srv/picoclaw/main.json picoclaw gat
 ```json
 {
   "gateway": {
-    "log_level": "fatal"
+    "log_level": "warn"
   }
 }
 ```
 
-默认值为 `fatal`。支持的值：`debug`、`info`、`warn`、`error`、`fatal`。
+默认值为 `warn`。支持的值：`debug`、`info`、`warn`、`error`、`fatal`。
 
 也可通过环境变量覆盖：`PICOCLAW_LOG_LEVEL=info`
 

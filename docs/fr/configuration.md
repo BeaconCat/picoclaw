@@ -38,12 +38,12 @@ PICOCLAW_HOME=/srv/picoclaw PICOCLAW_CONFIG=/srv/picoclaw/main.json picoclaw gat
 ```json
 {
   "gateway": {
-    "log_level": "fatal"
+    "log_level": "warn"
   }
 }
 ```
 
-La valeur par défaut est `fatal`. Valeurs supportées : `debug`, `info`, `warn`, `error`, `fatal`.
+La valeur par défaut est `warn`. Valeurs supportées : `debug`, `info`, `warn`, `error`, `fatal`.
 
 Peut également être surchargé via la variable d'environnement : `PICOCLAW_LOG_LEVEL=info`
 

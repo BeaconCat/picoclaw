@@ -38,12 +38,12 @@ PICOCLAW_HOME=/srv/picoclaw PICOCLAW_CONFIG=/srv/picoclaw/main.json picoclaw gat
 ```json
 {
   "gateway": {
-    "log_level": "fatal"
+    "log_level": "warn"
   }
 }
 ```
 
-Giá trị mặc định là `fatal`. Các giá trị được hỗ trợ: `debug`, `info`, `warn`, `error`, `fatal`.
+Giá trị mặc định là `warn`. Các giá trị được hỗ trợ: `debug`, `info`, `warn`, `error`, `fatal`.
 
 Cũng có thể ghi đè bằng biến môi trường: `PICOCLAW_LOG_LEVEL=info`
 

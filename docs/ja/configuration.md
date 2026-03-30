@@ -38,12 +38,12 @@ PICOCLAW_HOME=/srv/picoclaw PICOCLAW_CONFIG=/srv/picoclaw/main.json picoclaw gat
 ```json
 {
   "gateway": {
-    "log_level": "fatal"
+    "log_level": "warn"
   }
 }
 ```
 
-デフォルト値は `fatal` です。サポートされる値：`debug`、`info`、`warn`、`error`、`fatal`。
+デフォルト値は `warn` です。サポートされる値：`debug`、`info`、`warn`、`error`、`fatal`。
 
 環境変数でも上書き可能です：`PICOCLAW_LOG_LEVEL=info`
 
