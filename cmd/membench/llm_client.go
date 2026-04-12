@@ -46,11 +46,11 @@ func NewLLMClient(opts LLMClientOptions) *LLMClient {
 }
 
 type chatRequest struct {
-	Model              string                 `json:"model"`
-	Messages           []chatMessage          `json:"messages"`
-	Temperature        float64                `json:"temperature"`
-	MaxTokens          int                    `json:"max_tokens"`
-	ChatTemplateKwargs map[string]interface{} `json:"chat_template_kwargs,omitempty"`
+	Model              string         `json:"model"`
+	Messages           []chatMessage  `json:"messages"`
+	Temperature        float64        `json:"temperature"`
+	MaxTokens          int            `json:"max_tokens"`
+	ChatTemplateKwargs map[string]any `json:"chat_template_kwargs,omitempty"`
 }
 
 type chatMessage struct {
@@ -81,7 +81,7 @@ func (c *LLMClient) Complete(ctx context.Context, systemPrompt, userPrompt strin
 		MaxTokens:   512,
 	}
 	if c.NoThinking {
-		body.ChatTemplateKwargs = map[string]interface{}{
+		body.ChatTemplateKwargs = map[string]any{
 			"enable_thinking": false,
 		}
 	}

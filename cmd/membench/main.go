@@ -54,11 +54,13 @@ func main() {
 	evalCmd.Flags().StringVar(&flagOut, "out", "./bench-out", "output working directory")
 	evalCmd.Flags().StringVar(&flagMode, "mode", "all", "modes to evaluate: legacy, seahorse, or all")
 	evalCmd.Flags().IntVar(&flagBudget, "budget", 4000, "token budget for retrieval")
-	evalCmd.Flags().StringVar(&flagEvalMode, "eval-mode", "token", "evaluation mode: token (direct match) or llm (LLM-as-Judge)")
+	evalCmd.Flags().
+		StringVar(&flagEvalMode, "eval-mode", "token", "evaluation mode: token (direct match) or llm (LLM-as-Judge)")
 	evalCmd.Flags().StringVar(&flagAPIBase, "api-base", "", "OpenAI-compatible API base URL (env: MEMBENCH_API_BASE)")
 	evalCmd.Flags().StringVar(&flagAPIKey, "api-key", "", "API key for the LLM endpoint (env: MEMBENCH_API_KEY)")
 	evalCmd.Flags().StringVar(&flagModel, "model", "", "model name for LLM eval (env: MEMBENCH_MODEL)")
-	evalCmd.Flags().BoolVar(&flagNoThinking, "no-thinking", false, "disable thinking mode via chat_template_kwargs (llama.cpp + Qwen)")
+	evalCmd.Flags().
+		BoolVar(&flagNoThinking, "no-thinking", false, "disable thinking mode via chat_template_kwargs (llama.cpp + Qwen)")
 	evalCmd.Flags().IntVar(&flagLimit, "limit", 0, "max QA questions per sample (0 = all)")
 
 	reportCmd := &cobra.Command{
@@ -77,11 +79,13 @@ func main() {
 	runCmd.Flags().StringVar(&flagOut, "out", "./bench-out", "output working directory")
 	runCmd.Flags().StringVar(&flagMode, "mode", "all", "modes to run: legacy, seahorse, or all")
 	runCmd.Flags().IntVar(&flagBudget, "budget", 4000, "token budget for retrieval")
-	runCmd.Flags().StringVar(&flagEvalMode, "eval-mode", "token", "evaluation mode: token (direct match) or llm (LLM-as-Judge)")
+	runCmd.Flags().
+		StringVar(&flagEvalMode, "eval-mode", "token", "evaluation mode: token (direct match) or llm (LLM-as-Judge)")
 	runCmd.Flags().StringVar(&flagAPIBase, "api-base", "", "OpenAI-compatible API base URL (env: MEMBENCH_API_BASE)")
 	runCmd.Flags().StringVar(&flagAPIKey, "api-key", "", "API key for the LLM endpoint (env: MEMBENCH_API_KEY)")
 	runCmd.Flags().StringVar(&flagModel, "model", "", "model name for LLM eval (env: MEMBENCH_MODEL)")
-	runCmd.Flags().BoolVar(&flagNoThinking, "no-thinking", false, "disable thinking mode via chat_template_kwargs (llama.cpp + Qwen)")
+	runCmd.Flags().
+		BoolVar(&flagNoThinking, "no-thinking", false, "disable thinking mode via chat_template_kwargs (llama.cpp + Qwen)")
 	runCmd.Flags().IntVar(&flagLimit, "limit", 0, "max QA questions per sample (0 = all)")
 
 	rootCmd.AddCommand(ingestCmd, evalCmd, reportCmd, runCmd)

@@ -38,7 +38,11 @@ func generateAnswer(ctx context.Context, client *LLMClient, contextText, questio
 
 // judgeAnswer asks the LLM to score the candidate answer vs the gold answer.
 // Returns a score from 0.0 to 1.0.
-func judgeAnswer(ctx context.Context, client *LLMClient, question, goldAnswer, candidateAnswer string) (float64, error) {
+func judgeAnswer(
+	ctx context.Context,
+	client *LLMClient,
+	question, goldAnswer, candidateAnswer string,
+) (float64, error) {
 	userPrompt := fmt.Sprintf(
 		"Question: %s\n\nReference Answer: %s\n\nCandidate Answer: %s\n\nScore:",
 		question, goldAnswer, candidateAnswer,
