@@ -91,10 +91,7 @@ func (c *LLMClient) Complete(ctx context.Context, systemPrompt, userPrompt strin
 		return "", fmt.Errorf("marshal request: %w", err)
 	}
 
-	endpoint := c.BaseURL + "/v1/chat/completions"
-	if strings.HasSuffix(c.BaseURL, "/v1") || strings.HasSuffix(c.BaseURL, "/v1/") {
-		endpoint = strings.TrimRight(c.BaseURL, "/") + "/chat/completions"
-	}
+	endpoint := strings.TrimRight(c.BaseURL, "/") + "/chat/completions"
 	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(jsonBody))
 	if err != nil {
 		return "", fmt.Errorf("create request: %w", err)

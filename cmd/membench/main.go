@@ -289,13 +289,13 @@ func envOrFlag(flag, envKey string) string {
 //
 // Environment variables:
 //
-//	MEMBENCH_API_BASE  – OpenAI-compatible base URL  (default http://127.0.0.1:8080)
+//	MEMBENCH_API_BASE  – OpenAI-compatible base URL  (default http://127.0.0.1:8080/v1)
 //	MEMBENCH_API_KEY   – Bearer token for the endpoint
 //	MEMBENCH_MODEL     – Model name to send in the request
 func buildLLMOptions() (LLMClientOptions, error) {
 	base := envOrFlag(flagAPIBase, "MEMBENCH_API_BASE")
 	if base == "" {
-		base = "http://127.0.0.1:8080"
+		base = "http://127.0.0.1:8080/v1"
 	}
 	model := envOrFlag(flagModel, "MEMBENCH_MODEL")
 	if model == "" {
