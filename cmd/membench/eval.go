@@ -201,38 +201,59 @@ func EvalSeahorse(
 
 // aggregateMetrics computes overall and per-category metrics.
 func aggregateMetrics(qaResults []QAResult) AggMetrics {
-	byCat := map[int]*CatMetrics{}
+	type catAccum struct {
+		f1Sum        float64
+		f1Count      int
+		hitRateSum   float64
+		hitRateCount int
+	}
+	byCatAcc := map[int]*catAccum{}
 	totalF1 := 0.0
 	totalHitRate := 0.0
+	validF1Count := 0
 	for _, qr := range qaResults {
-		totalF1 += qr.TokenF1
-		totalHitRate += qr.HitRate
-		cat, ok := byCat[qr.Category]
-		if !ok {
-			cat = &CatMetrics{}
-			byCat[qr.Category] = cat
+		// Skip sentinel -1.0 scores (LLM API/parse failures) from F1 averaging.
+		if qr.TokenF1 >= 0 {
+			totalF1 += qr.TokenF1
+			validF1Count++
 		}
-		cat.F1 += qr.TokenF1
-		cat.HitRate += qr.HitRate
-		cat.QuestionCount++
+		totalHitRate += qr.HitRate
+		acc, ok := byCatAcc[qr.Category]
+		if !ok {
+			acc = &catAccum{}
+			byCatAcc[qr.Category] = acc
+		}
+		if qr.TokenF1 >= 0 {
+			acc.f1Sum += qr.TokenF1
+			acc.f1Count++
+		}
+		acc.hitRateSum += qr.HitRate
+		acc.hitRateCount++
 	}
-	n := len(qaResults)
-	if n == 0 {
-		n = 1
+	nHit := len(qaResults)
+	if nHit == 0 {
+		nHit = 1
 	}
-	agg := AggMetrics{
-		OverallF1:      totalF1 / float64(n),
-		OverallHitRate: totalHitRate / float64(n),
+	if validF1Count == 0 {
+		validF1Count = 1
+	}
+	byCat := map[int]*CatMetrics{}
+	for cat, acc := range byCatAcc {
+		cm := &CatMetrics{QuestionCount: acc.hitRateCount}
+		if acc.f1Count > 0 {
+			cm.F1 = acc.f1Sum / float64(acc.f1Count)
+		}
+		if acc.hitRateCount > 0 {
+			cm.HitRate = acc.hitRateSum / float64(acc.hitRateCount)
+		}
+		byCat[cat] = cm
+	}
+	return AggMetrics{
+		OverallF1:      totalF1 / float64(validF1Count),
+		OverallHitRate: totalHitRate / float64(nHit),
 		ByCategory:     byCat,
 		TotalQuestions: len(qaResults),
 	}
-	for _, cat := range agg.ByCategory {
-		if cat.QuestionCount > 0 {
-			cat.F1 /= float64(cat.QuestionCount)
-			cat.HitRate /= float64(cat.QuestionCount)
-		}
-	}
-	return agg
 }
 
 // SaveResults writes per-sample eval results to JSON files.

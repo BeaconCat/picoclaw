@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -37,8 +39,11 @@ func generateAnswer(ctx context.Context, client *LLMClient, contextText, questio
 	return client.Complete(ctx, answerSystemPrompt, userPrompt)
 }
 
+// scoreRe matches the first standalone integer 1-5 in the judge response.
+var scoreRe = regexp.MustCompile(`\b([1-5])\b`)
+
 // judgeAnswer asks the LLM to score the candidate answer vs the gold answer.
-// Returns a score from 0.0 to 1.0.
+// Returns a score from 0.0 to 1.0, or -1.0 on parse failure.
 func judgeAnswer(
 	ctx context.Context,
 	client *LLMClient,
@@ -51,20 +56,16 @@ func judgeAnswer(
 
 	response, err := client.Complete(ctx, judgeSystemPrompt, userPrompt)
 	if err != nil {
-		return 0.0, err
+		return -1.0, err
 	}
 
-	// Parse score from response
 	response = strings.TrimSpace(response)
-	// Extract first digit found
-	for _, ch := range response {
-		if ch >= '1' && ch <= '5' {
-			score, _ := strconv.Atoi(string(ch))
-			return float64(score-1) / 4.0, nil // Normalize 1-5 to 0.0-1.0
-		}
+	if m := scoreRe.FindStringSubmatch(response); len(m) == 2 {
+		score, _ := strconv.Atoi(m[1])
+		return float64(score-1) / 4.0, nil // Normalize 1-5 to 0.0-1.0
 	}
-	log.Printf("WARNING: could not parse judge score from: %q, defaulting to 0.0", response)
-	return 0.0, nil
+	log.Printf("WARNING: could not parse judge score from: %q, returning -1", response)
+	return -1.0, nil
 }
 
 // EvalLegacyLLM evaluates legacy store using LLM generation + LLM-as-Judge.
@@ -101,8 +102,8 @@ func EvalLegacyLLM(
 				llmAnswer = ""
 			}
 
-			// Judge the answer
-			score := 0.0
+			// Judge the answer; -1.0 = API/parse failure.
+			score := -1.0
 			if llmAnswer != "" {
 				score, err = judgeAnswer(ctx, client, qa.Question, qa.AnswerString(), llmAnswer)
 				if err != nil {
@@ -187,7 +188,11 @@ func EvalSeahorseLLM(
 			for id := range bestRank {
 				messageIDs = append(messageIDs, id)
 			}
-			sortByRank(messageIDs, bestRank)
+			// Sort ascending: best (most-negative) rank first.
+			// BudgetTruncate walks front-to-back, so best-ranked messages are kept.
+			sort.Slice(messageIDs, func(i, j int) bool {
+				return bestRank[messageIDs[i]] < bestRank[messageIDs[j]]
+			})
 
 			var contentParts []string
 			if len(messageIDs) > 0 {
@@ -206,10 +211,10 @@ func EvalSeahorseLLM(
 					Question:   qa.Question,
 					Category:   qa.Category,
 					GoldAnswer: qa.AnswerString(),
-					TokenF1:    0.0,
+					TokenF1:    -1.0,
 					HitRate:    0.0,
 				})
-				log.Printf("[seahorse-llm] sample=%s q=%d/%d score=0.00 answer=(no context)",
+				log.Printf("[seahorse-llm] sample=%s q=%d/%d score=-1.00 answer=(no context)",
 					sample.SampleID, total, totalQA)
 				continue
 			}
@@ -219,7 +224,7 @@ func EvalSeahorseLLM(
 
 			// Generate answer with LLM
 			llmAnswer := ""
-			score := 0.0
+			score := -1.0
 			if contextText != "" {
 				var err error
 				llmAnswer, err = generateAnswer(ctx, client, contextText, qa.Question)
@@ -228,7 +233,7 @@ func EvalSeahorseLLM(
 				}
 			}
 
-			// Judge the answer
+			// Judge the answer; -1.0 = API/parse failure.
 			if llmAnswer != "" {
 				var err error
 				score, err = judgeAnswer(ctx, client, qa.Question, qa.AnswerString(), llmAnswer)
@@ -275,17 +280,4 @@ func truncateStr(s string, maxLen int) string {
 		return s[:maxLen] + "..."
 	}
 	return s
-}
-
-// sortByRank sorts message IDs by BM25 rank (more negative = better).
-func sortByRank(ids []int64, ranks map[int64]float64) {
-	for i := 1; i < len(ids); i++ {
-		key := ids[i]
-		j := i - 1
-		for j >= 0 && ranks[ids[j]] > ranks[key] {
-			ids[j+1] = ids[j]
-			j--
-		}
-		ids[j+1] = key
-	}
 }
