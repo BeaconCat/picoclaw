@@ -305,6 +305,10 @@ func buildLLMOptions() (LLMClientOptions, error) {
 	}
 	apiKey := envOrFlag(flagAPIKey, "MEMBENCH_API_KEY")
 
+	if flagTimeout <= 0 {
+		return LLMClientOptions{}, fmt.Errorf("--timeout must be > 0, got %d", flagTimeout)
+	}
+
 	return LLMClientOptions{
 		BaseURL:    base,
 		Model:      model,

@@ -36,6 +36,7 @@ type AggMetrics struct {
 	OverallHitRate float64             `json:"overallHitRate"`
 	ByCategory     map[int]*CatMetrics `json:"byCategory"`
 	TotalQuestions int                 `json:"totalQuestions"`
+	ValidF1Count   int                 `json:"validF1Count"`
 }
 
 // CatMetrics holds metrics for a single category.
@@ -43,6 +44,7 @@ type CatMetrics struct {
 	F1            float64 `json:"f1"`
 	HitRate       float64 `json:"hitRate"`
 	QuestionCount int     `json:"questionCount"`
+	ValidF1Count  int     `json:"validF1Count"`
 }
 
 // EvalLegacy evaluates using legacy session store (raw history + budget truncation).
@@ -239,7 +241,10 @@ func aggregateMetrics(qaResults []QAResult) AggMetrics {
 	}
 	byCat := map[int]*CatMetrics{}
 	for cat, acc := range byCatAcc {
-		cm := &CatMetrics{QuestionCount: acc.hitRateCount}
+		cm := &CatMetrics{
+			QuestionCount: acc.hitRateCount,
+			ValidF1Count:  acc.f1Count,
+		}
 		if acc.f1Count > 0 {
 			cm.F1 = acc.f1Sum / float64(acc.f1Count)
 		}
@@ -253,6 +258,7 @@ func aggregateMetrics(qaResults []QAResult) AggMetrics {
 		OverallHitRate: totalHitRate / float64(nHit),
 		ByCategory:     byCat,
 		TotalQuestions: len(qaResults),
+		ValidF1Count:   validF1Count,
 	}
 }
 
@@ -298,27 +304,33 @@ func SaveAggregated(results []EvalResult, outDir string) error {
 func computeModeAgg(results []EvalResult) AggMetrics {
 	agg := AggMetrics{ByCategory: map[int]*CatMetrics{}}
 	for _, r := range results {
-		agg.OverallF1 += r.Agg.OverallF1 * float64(r.Agg.TotalQuestions)
+		agg.OverallF1 += r.Agg.OverallF1 * float64(r.Agg.ValidF1Count)
 		agg.OverallHitRate += r.Agg.OverallHitRate * float64(r.Agg.TotalQuestions)
 		agg.TotalQuestions += r.Agg.TotalQuestions
+		agg.ValidF1Count += r.Agg.ValidF1Count
 		for cat, cm := range r.Agg.ByCategory {
 			existing, ok := agg.ByCategory[cat]
 			if !ok {
 				existing = &CatMetrics{}
 				agg.ByCategory[cat] = existing
 			}
-			existing.F1 += cm.F1 * float64(cm.QuestionCount)
+			existing.F1 += cm.F1 * float64(cm.ValidF1Count)
 			existing.HitRate += cm.HitRate * float64(cm.QuestionCount)
 			existing.QuestionCount += cm.QuestionCount
+			existing.ValidF1Count += cm.ValidF1Count
 		}
 	}
+	if agg.ValidF1Count > 0 {
+		agg.OverallF1 /= float64(agg.ValidF1Count)
+	}
 	if agg.TotalQuestions > 0 {
-		agg.OverallF1 /= float64(agg.TotalQuestions)
 		agg.OverallHitRate /= float64(agg.TotalQuestions)
 	}
 	for _, cat := range agg.ByCategory {
+		if cat.ValidF1Count > 0 {
+			cat.F1 /= float64(cat.ValidF1Count)
+		}
 		if cat.QuestionCount > 0 {
-			cat.F1 /= float64(cat.QuestionCount)
 			cat.HitRate /= float64(cat.QuestionCount)
 		}
 	}

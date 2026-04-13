@@ -211,10 +211,10 @@ func EvalSeahorseLLM(
 					Question:   qa.Question,
 					Category:   qa.Category,
 					GoldAnswer: qa.AnswerString(),
-					TokenF1:    -1.0,
+					TokenF1:    0.0,
 					HitRate:    0.0,
 				})
-				log.Printf("[seahorse-llm] sample=%s q=%d/%d score=-1.00 answer=(no context)",
+				log.Printf("[seahorse-llm] sample=%s q=%d/%d score=0.00 answer=(no context)",
 					sample.SampleID, total, totalQA)
 				continue
 			}
