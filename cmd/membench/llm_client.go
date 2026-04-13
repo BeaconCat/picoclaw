@@ -38,7 +38,7 @@ func NewLLMClient(opts LLMClientOptions) *LLMClient {
 		opts.Timeout = 120 * time.Second
 	}
 	maxRetries := opts.MaxRetries
-	if maxRetries <= 0 {
+	if maxRetries < 0 {
 		maxRetries = 3
 	}
 	return &LLMClient{
@@ -169,6 +169,9 @@ func (c *LLMClient) Complete(ctx context.Context, systemPrompt, userPrompt strin
 	// Strip any residual <think>...</think> blocks
 	if idx := strings.Index(content, "</think>"); idx >= 0 {
 		content = strings.TrimSpace(content[idx+len("</think>"):])
+	}
+	if content == "" {
+		return "", fmt.Errorf("empty LLM response")
 	}
 	return content, nil
 }

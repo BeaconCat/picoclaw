@@ -272,7 +272,15 @@ func runReport(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no eval results found in %s", flagOut)
 	}
 
-	PrintComparison(allResults, nil)
+	var tokenResults, llmResults []EvalResult
+	for _, r := range allResults {
+		if strings.HasSuffix(r.Mode, "-llm") {
+			llmResults = append(llmResults, r)
+		} else {
+			tokenResults = append(tokenResults, r)
+		}
+	}
+	PrintComparison(tokenResults, llmResults)
 	return nil
 }
 

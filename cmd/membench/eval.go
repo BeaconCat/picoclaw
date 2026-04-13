@@ -305,9 +305,10 @@ func SaveAggregated(results []EvalResult, outDir string) error {
 func computeModeAgg(results []EvalResult) AggMetrics {
 	agg := AggMetrics{ByCategory: map[int]*CatMetrics{}}
 	for _, r := range results {
-		// Backward compat: old eval JSON without ValidF1Count → use TotalQuestions.
+		// Backward compat: old eval JSON (token mode) without ValidF1Count → use TotalQuestions.
+		// LLM modes may legitimately have ValidF1Count==0 (all failures).
 		vf1 := r.Agg.ValidF1Count
-		if vf1 == 0 && r.Agg.TotalQuestions > 0 {
+		if vf1 == 0 && r.Agg.TotalQuestions > 0 && !strings.HasSuffix(r.Mode, "-llm") {
 			vf1 = r.Agg.TotalQuestions
 		}
 		agg.OverallF1 += r.Agg.OverallF1 * float64(vf1)
@@ -321,7 +322,7 @@ func computeModeAgg(results []EvalResult) AggMetrics {
 				agg.ByCategory[cat] = existing
 			}
 			cvf1 := cm.ValidF1Count
-			if cvf1 == 0 && cm.QuestionCount > 0 {
+			if cvf1 == 0 && cm.QuestionCount > 0 && !strings.HasSuffix(r.Mode, "-llm") {
 				cvf1 = cm.QuestionCount
 			}
 			existing.F1 += cm.F1 * float64(cvf1)
