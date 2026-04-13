@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ type LLMClient struct {
 	Model      string
 	APIKey     string
 	NoThinking bool // send chat_template_kwargs to disable thinking (llama.cpp specific)
+	MaxRetries int  // max retry attempts for transient errors (0 = no retry)
 	Client     *http.Client
 }
 
@@ -27,6 +29,7 @@ type LLMClientOptions struct {
 	APIKey     string
 	Timeout    time.Duration
 	NoThinking bool
+	MaxRetries int // max retry attempts (default 3)
 }
 
 // NewLLMClient creates a client for an OpenAI-compatible chat completion API.
@@ -34,11 +37,16 @@ func NewLLMClient(opts LLMClientOptions) *LLMClient {
 	if opts.Timeout == 0 {
 		opts.Timeout = 120 * time.Second
 	}
+	maxRetries := opts.MaxRetries
+	if maxRetries <= 0 {
+		maxRetries = 3
+	}
 	return &LLMClient{
 		BaseURL:    strings.TrimRight(opts.BaseURL, "/"),
 		Model:      opts.Model,
 		APIKey:     opts.APIKey,
 		NoThinking: opts.NoThinking,
+		MaxRetries: maxRetries,
 		Client: &http.Client{
 			Timeout: opts.Timeout,
 		},
@@ -101,19 +109,53 @@ func (c *LLMClient) Complete(ctx context.Context, systemPrompt, userPrompt strin
 		req.Header.Set("Authorization", "Bearer "+c.APIKey)
 	}
 
-	resp, err := c.Client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("http request: %w", err)
-	}
-	defer resp.Body.Close()
+	var respBody []byte
+	var lastErr error
+	for attempt := 0; attempt <= c.MaxRetries; attempt++ {
+		if attempt > 0 {
+			backoff := time.Duration(1<<(attempt-1)) * time.Second // 1s, 2s, 4s, ...
+			log.Printf("LLM retry %d/%d after %v: %v", attempt, c.MaxRetries, backoff, lastErr)
+			select {
+			case <-ctx.Done():
+				return "", ctx.Err()
+			case <-time.After(backoff):
+			}
+			// Rebuild request (body reader is consumed)
+			req, err = http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewReader(jsonBody))
+			if err != nil {
+				return "", fmt.Errorf("create request: %w", err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			if c.APIKey != "" {
+				req.Header.Set("Authorization", "Bearer "+c.APIKey)
+			}
+		}
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("read response: %w", err)
-	}
+		var resp *http.Response
+		resp, lastErr = c.Client.Do(req)
+		if lastErr != nil {
+			continue // network/timeout error → retry
+		}
 
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("API error %d: %s", resp.StatusCode, string(respBody))
+		respBody, lastErr = io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if lastErr != nil {
+			continue
+		}
+
+		if resp.StatusCode == 429 || resp.StatusCode >= 500 {
+			lastErr = fmt.Errorf("API error %d: %s", resp.StatusCode, string(respBody))
+			continue // rate limit or server error → retry
+		}
+		if resp.StatusCode != 200 {
+			return "", fmt.Errorf("API error %d: %s", resp.StatusCode, string(respBody))
+		}
+
+		lastErr = nil
+		break
+	}
+	if lastErr != nil {
+		return "", fmt.Errorf("after %d retries: %w", c.MaxRetries, lastErr)
 	}
 
 	var chatResp chatResponse

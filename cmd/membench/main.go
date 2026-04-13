@@ -27,6 +27,7 @@ var (
 	flagNoThinking bool
 	flagLimit      int
 	flagTimeout    int
+	flagRetries    int
 )
 
 func main() {
@@ -66,6 +67,7 @@ func main() {
 		BoolVar(&flagNoThinking, "no-thinking", false, "disable thinking mode via chat_template_kwargs (llama.cpp + Qwen)")
 	evalCmd.Flags().IntVar(&flagLimit, "limit", 0, "max QA questions per sample (0 = all)")
 	evalCmd.Flags().IntVar(&flagTimeout, "timeout", 120, "HTTP timeout in seconds for LLM requests")
+	evalCmd.Flags().IntVar(&flagRetries, "retries", 3, "max retry attempts for transient LLM errors (timeout/5xx/429)")
 
 	reportCmd := &cobra.Command{
 		Use:   "report",
@@ -93,6 +95,7 @@ func main() {
 		BoolVar(&flagNoThinking, "no-thinking", false, "disable thinking mode via chat_template_kwargs (llama.cpp + Qwen)")
 	runCmd.Flags().IntVar(&flagLimit, "limit", 0, "max QA questions per sample (0 = all)")
 	runCmd.Flags().IntVar(&flagTimeout, "timeout", 120, "HTTP timeout in seconds for LLM requests")
+	runCmd.Flags().IntVar(&flagRetries, "retries", 3, "max retry attempts for transient LLM errors (timeout/5xx/429)")
 
 	rootCmd.AddCommand(ingestCmd, evalCmd, reportCmd, runCmd)
 
@@ -317,5 +320,6 @@ func buildLLMOptions() (LLMClientOptions, error) {
 		APIKey:     apiKey,
 		NoThinking: flagNoThinking,
 		Timeout:    time.Duration(flagTimeout) * time.Second,
+		MaxRetries: flagRetries,
 	}, nil
 }
