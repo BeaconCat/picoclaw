@@ -116,9 +116,134 @@ jobs:
             --draft=${{ inputs.draft }} \
             --prerelease=${{ inputs.prerelease }}
 
+  patch-macos-launcher:
+    name: Patch macOS Launcher (CGO systray)
+    needs: release
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - goarch: arm64
+            arch_name: arm64
+          - goarch: amd64
+            arch_name: x86_64
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.tag }}
+
+      - name: Setup Go from go.mod
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.33.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/frontend/pnpm-lock.yaml
+
+      - name: Build frontend
+        run: |
+          cd web/frontend
+          CI=true pnpm install --frozen-lockfile
+          pnpm build:backend
+
+      - name: Build picoclaw-launcher with CGO
+        env:
+          CGO_ENABLED: "1"
+          GOOS: darwin
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          SDK_PATH=$(xcrun --show-sdk-path)
+          export CGO_CFLAGS="-isysroot ${SDK_PATH} -mmacosx-version-min=11.0"
+          export CGO_LDFLAGS="-isysroot ${SDK_PATH}"
+
+          go generate ./...
+
+          # Build with go-winres for consistency (skip on darwin, no-op)
+          go build -tags "goolm,stdjson" \
+            -ldflags "-s -w \
+              -X github.com/sipeed/picoclaw/pkg/config.Version=${{ inputs.tag }} \
+              -X github.com/sipeed/picoclaw/pkg/config.GitCommit=$(git rev-parse --short HEAD) \
+              -X github.com/sipeed/picoclaw/pkg/config.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            -o picoclaw-launcher-cgo \
+            ./web/backend
+
+      - name: Sign and notarize launcher binary
+        if: ${{ env.MACOS_SIGN_P12 != '' }}
+        env:
+          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+        run: |
+          # Install rcodesign for signing + notarization
+          cargo install apple-codesign || pip3 install rcodesign || true
+
+          # Decode P12 certificate
+          echo "$MACOS_SIGN_P12" | base64 -d > cert.p12
+
+          # Sign the binary
+          rcodesign sign \
+            --p12-file cert.p12 \
+            --p12-password "$MACOS_SIGN_PASSWORD" \
+            picoclaw-launcher-cgo
+
+          # Write notary API key
+          echo "$MACOS_NOTARY_KEY" > notary-key.p8
+
+          # Notarize
+          rcodesign notary-submit \
+            --api-key-path notary-key.p8 \
+            --api-issuer "$MACOS_NOTARY_ISSUER_ID" \
+            --wait \
+            picoclaw-launcher-cgo
+
+          # Cleanup secrets
+          rm -f cert.p12 notary-key.p8
+
+      - name: Patch darwin release archive
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          ARCHIVE_NAME="picoclaw_Darwin_${{ matrix.arch_name }}.tar.gz"
+
+          # Download existing darwin archive from release
+          gh release download "${TAG}" --pattern "${ARCHIVE_NAME}" --dir ./patch-tmp
+
+          # Extract, replace launcher, repack
+          mkdir -p ./patch-extracted
+          tar xzf "./patch-tmp/${ARCHIVE_NAME}" -C ./patch-extracted
+
+          # Replace the no-CGO launcher with CGO version
+          cp picoclaw-launcher-cgo ./patch-extracted/picoclaw-launcher
+          chmod +x ./patch-extracted/picoclaw-launcher
+
+          # Repack
+          tar czf "${ARCHIVE_NAME}" -C ./patch-extracted .
+
+          # Upload replacement (--clobber overwrites existing asset)
+          gh release upload "${TAG}" "${ARCHIVE_NAME}" --clobber
+
+          echo "✅ Patched ${ARCHIVE_NAME} with CGO launcher (systray enabled)"
+
   upload-tos:
     name: Upload to TOS
-    needs: release
+    needs: [release, patch-macos-launcher]
     if: ${{ inputs.upload_tos }}
     uses: ./.github/workflows/upload-tos.yml
     with:

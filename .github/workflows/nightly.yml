@@ -74,10 +74,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Docker Hub
-        if: env.DOCKERHUB_USERNAME != ''
         uses: docker/login-action@v4
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
         with:
           registry: docker.io
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -94,7 +91,7 @@ jobs:
         with:
           distribution: goreleaser
           version: ~> v2
-          args: release --clean --skip=docker
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
@@ -131,7 +128,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -fa nightly -m "Nightly build ${VERSION}"
-          git push origin nightly --force
+          git push origin nightly
 
           # Collect release artifacts from goreleaser dist/
           ASSETS=()
@@ -148,8 +145,8 @@ jobs:
             --latest=false \
             "${ASSETS[@]}"
 
-  nightly-macos-launcher:
-    name: macOS Launcher (systray)
+  patch-macos-launcher:
+    name: Patch macOS Launcher (CGO systray)
     needs: nightly
     runs-on: macos-latest
     permissions:
@@ -158,9 +155,9 @@ jobs:
       matrix:
         include:
           - goarch: arm64
-            cc_arch: arm64
+            arch_name: arm64
           - goarch: amd64
-            cc_arch: x86_64
+            arch_name: x86_64
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -204,7 +201,7 @@ jobs:
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Build picoclaw-launcher (CGO)
+      - name: Build picoclaw-launcher with CGO
         env:
           CGO_ENABLED: "1"
           GOOS: darwin
@@ -213,7 +210,6 @@ jobs:
           SDK_PATH=$(xcrun --show-sdk-path)
           export CGO_CFLAGS="-isysroot ${SDK_PATH} -mmacosx-version-min=11.0"
           export CGO_LDFLAGS="-isysroot ${SDK_PATH}"
-          export CC="clang -arch ${{ matrix.cc_arch }} -isysroot ${SDK_PATH}"
 
           go generate ./...
           go build -tags "goolm,stdjson" \
@@ -221,14 +217,53 @@ jobs:
               -X github.com/sipeed/picoclaw/pkg/config.Version=${{ steps.version.outputs.version }} \
               -X github.com/sipeed/picoclaw/pkg/config.GitCommit=$(git rev-parse --short HEAD) \
               -X github.com/sipeed/picoclaw/pkg/config.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            -o picoclaw-launcher \
+            -o picoclaw-launcher-cgo \
             ./web/backend
 
-      - name: Package and upload
+      - name: Sign and notarize launcher binary
+        if: ${{ env.MACOS_SIGN_P12 != '' }}
+        env:
+          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
+          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
+        run: |
+          cargo install apple-codesign || pip3 install rcodesign || true
+
+          echo "$MACOS_SIGN_P12" | base64 -d > cert.p12
+
+          rcodesign sign \
+            --p12-file cert.p12 \
+            --p12-password "$MACOS_SIGN_PASSWORD" \
+            picoclaw-launcher-cgo
+
+          echo "$MACOS_NOTARY_KEY" > notary-key.p8
+
+          rcodesign notary-submit \
+            --api-key-path notary-key.p8 \
+            --api-issuer "$MACOS_NOTARY_ISSUER_ID" \
+            --wait \
+            picoclaw-launcher-cgo
+
+          rm -f cert.p12 notary-key.p8
+
+      - name: Patch darwin release archive
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ARCHIVE="picoclaw-launcher-cgo_Darwin_${{ matrix.cc_arch }}.tar.gz"
-          tar czf "${ARCHIVE}" picoclaw-launcher
-          # Upload to existing nightly release
-          gh release upload nightly "${ARCHIVE}" --clobber
+          ARCHIVE_NAME="picoclaw_Darwin_${{ matrix.arch_name }}.tar.gz"
+
+          gh release download nightly --pattern "${ARCHIVE_NAME}" --dir ./patch-tmp
+
+          mkdir -p ./patch-extracted
+          tar xzf "./patch-tmp/${ARCHIVE_NAME}" -C ./patch-extracted
+
+          cp picoclaw-launcher-cgo ./patch-extracted/picoclaw-launcher
+          chmod +x ./patch-extracted/picoclaw-launcher
+
+          tar czf "${ARCHIVE_NAME}" -C ./patch-extracted .
+
+          gh release upload nightly "${ARCHIVE_NAME}" --clobber
+
+          echo "✅ Patched ${ARCHIVE_NAME} with CGO launcher (systray enabled)"
