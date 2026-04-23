@@ -224,7 +224,7 @@ jobs:
             ./web/backend
 
       - name: Sign and notarize launcher binary
-        if: ${{ env.MACOS_SIGN_P12 != '' }}
+        if: env.MACOS_SIGN_P12 != ''
         env:
           MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
           MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
@@ -232,7 +232,7 @@ jobs:
           MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
           MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
         run: |
-          cargo install apple-codesign || pip3 install rcodesign || true
+          pip3 install rcodesign
 
           echo "$MACOS_SIGN_P12" | base64 -d > cert.p12
 
