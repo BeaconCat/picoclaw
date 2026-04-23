@@ -116,7 +116,7 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY_OWNER: ${{ steps.repo.outputs.owner }}
+          REPO_OWNER: ${{ steps.repo.outputs.owner }}
           DOCKERHUB_IMAGE_NAME: ${{ vars.DOCKERHUB_REPOSITORY }}
           GOVERSION: ${{ steps.setup-go.outputs.go-version }}
           INCLUDE_ANDROID_BUNDLE: "true"
