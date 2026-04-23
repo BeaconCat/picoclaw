@@ -101,7 +101,7 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY_OWNER: ${{ steps.repo.outputs.owner }}
+          REPO_OWNER: ${{ steps.repo.outputs.owner }}
           DOCKERHUB_IMAGE_NAME: ${{ vars.DOCKERHUB_REPOSITORY }}
           GOVERSION: ${{ steps.setup-go.outputs.go-version }}
           GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.version }}
@@ -152,12 +152,11 @@ jobs:
             --latest=false \
             "${ASSETS[@]}"
 
-  patch-macos-launcher:
-    name: Patch macOS Launcher (CGO systray)
-    needs: nightly
+  build-macos-launcher:
+    name: Build macOS Launcher (${{ matrix.arch_name }})
     runs-on: macos-latest
     permissions:
-      contents: write
+      contents: read
     strategy:
       matrix:
         include:
@@ -255,13 +254,40 @@ jobs:
 
           rm -f cert.p12 notary-key.p8
 
+      - name: Upload launcher artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-launcher-${{ matrix.arch_name }}
+          path: picoclaw-launcher-cgo
+          retention-days: 1
+
+  patch-macos-archives:
+    name: Patch macOS Archives
+    needs: [nightly, build-macos-launcher]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - arch_name: arm64
+          - arch_name: x86_64
+    steps:
+      - name: Download launcher artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-launcher-${{ matrix.arch_name }}
+
       - name: Patch darwin release archive
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ARCHIVE_NAME="picoclaw_Darwin_${{ matrix.arch_name }}.tar.gz"
 
-          gh release download nightly --pattern "${ARCHIVE_NAME}" --dir ./patch-tmp
+          gh release download nightly \
+            --repo "${{ github.repository }}" \
+            --pattern "${ARCHIVE_NAME}" \
+            --dir ./patch-tmp
 
           mkdir -p ./patch-extracted
           tar xzf "./patch-tmp/${ARCHIVE_NAME}" -C ./patch-extracted
@@ -271,6 +297,8 @@ jobs:
 
           tar czf "${ARCHIVE_NAME}" -C ./patch-extracted .
 
-          gh release upload nightly "${ARCHIVE_NAME}" --clobber
+          gh release upload nightly \
+            --repo "${{ github.repository }}" \
+            "${ARCHIVE_NAME}" --clobber
 
           echo "✅ Patched ${ARCHIVE_NAME} with CGO launcher (systray enabled)"

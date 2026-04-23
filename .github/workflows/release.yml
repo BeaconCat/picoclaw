@@ -135,12 +135,12 @@ jobs:
             --draft=${{ inputs.draft }} \
             --prerelease=${{ inputs.prerelease }}
 
-  patch-macos-launcher:
-    name: Patch macOS Launcher (CGO systray)
-    needs: release
+  build-macos-launcher:
+    name: Build macOS Launcher (${{ matrix.arch_name }})
+    needs: create-tag
     runs-on: macos-latest
     permissions:
-      contents: write
+      contents: read
     strategy:
       matrix:
         include:
@@ -190,8 +190,6 @@ jobs:
           export CGO_LDFLAGS="-isysroot ${SDK_PATH}"
 
           go generate ./...
-
-          # Build with go-winres for consistency (skip on darwin, no-op)
           go build -tags "goolm,stdjson" \
             -ldflags "-s -w \
               -X github.com/sipeed/picoclaw/pkg/config.Version=${{ inputs.tag }} \
@@ -201,7 +199,7 @@ jobs:
             ./web/backend
 
       - name: Sign and notarize launcher binary
-        if: ${{ env.MACOS_SIGN_P12 != '' }}
+        if: env.MACOS_SIGN_P12 != ''
         env:
           MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
           MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
@@ -209,30 +207,48 @@ jobs:
           MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
           MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
         run: |
-          # Install rcodesign for signing + notarization
-          cargo install apple-codesign || pip3 install rcodesign || true
+          pip3 install rcodesign
 
-          # Decode P12 certificate
           echo "$MACOS_SIGN_P12" | base64 -d > cert.p12
 
-          # Sign the binary
           rcodesign sign \
             --p12-file cert.p12 \
             --p12-password "$MACOS_SIGN_PASSWORD" \
             picoclaw-launcher-cgo
 
-          # Write notary API key
           echo "$MACOS_NOTARY_KEY" > notary-key.p8
 
-          # Notarize
           rcodesign notary-submit \
             --api-key-path notary-key.p8 \
             --api-issuer "$MACOS_NOTARY_ISSUER_ID" \
             --wait \
             picoclaw-launcher-cgo
 
-          # Cleanup secrets
           rm -f cert.p12 notary-key.p8
+
+      - name: Upload launcher artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-launcher-${{ matrix.arch_name }}
+          path: picoclaw-launcher-cgo
+          retention-days: 1
+
+  patch-macos-archives:
+    name: Patch macOS Archives
+    needs: [release, build-macos-launcher]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        include:
+          - arch_name: arm64
+          - arch_name: x86_64
+    steps:
+      - name: Download launcher artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-launcher-${{ matrix.arch_name }}
 
       - name: Patch darwin release archive
         env:
@@ -241,28 +257,28 @@ jobs:
         run: |
           ARCHIVE_NAME="picoclaw_Darwin_${{ matrix.arch_name }}.tar.gz"
 
-          # Download existing darwin archive from release
-          gh release download "${TAG}" --pattern "${ARCHIVE_NAME}" --dir ./patch-tmp
+          gh release download "${TAG}" \
+            --repo "${{ github.repository }}" \
+            --pattern "${ARCHIVE_NAME}" \
+            --dir ./patch-tmp
 
-          # Extract, replace launcher, repack
           mkdir -p ./patch-extracted
           tar xzf "./patch-tmp/${ARCHIVE_NAME}" -C ./patch-extracted
 
-          # Replace the no-CGO launcher with CGO version
           cp picoclaw-launcher-cgo ./patch-extracted/picoclaw-launcher
           chmod +x ./patch-extracted/picoclaw-launcher
 
-          # Repack
           tar czf "${ARCHIVE_NAME}" -C ./patch-extracted .
 
-          # Upload replacement (--clobber overwrites existing asset)
-          gh release upload "${TAG}" "${ARCHIVE_NAME}" --clobber
+          gh release upload "${TAG}" \
+            --repo "${{ github.repository }}" \
+            "${ARCHIVE_NAME}" --clobber
 
           echo "✅ Patched ${ARCHIVE_NAME} with CGO launcher (systray enabled)"
 
   upload-tos:
     name: Upload to TOS
-    needs: [release, patch-macos-launcher]
+    needs: [release, patch-macos-archives]
     if: ${{ inputs.upload_tos }}
     uses: ./.github/workflows/upload-tos.yml
     with:
